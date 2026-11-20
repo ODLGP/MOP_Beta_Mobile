@@ -1262,7 +1262,7 @@ function initLandfillGrid() {
       card.className = 'landfill-card';
       const lastDate = lastMeasurementByLandfill[landfill.id];
       const lastDateStr = lastDate ? '📅 Zadnje: ' + lastDate.split('-').reverse().join('.') : '📅 Još nije mjereno';
-      card.innerHTML = '<img src="'+landfill.image+'" alt="'+landfill.name+'"><h3>'+landfill.name+'</h3><span class="last-measurement-badge">'+lastDateStr+'</span><button class="navigate-btn" onclick="navigateToLandfill(\''+landfill.mapsLink+'\', \''+landfill.name.replace(/'/g, "\\\'")+'\'); event.stopPropagation();">🗺️ Navigiraj</button>';
+      card.innerHTML = '<img src="'+landfill.image+'" alt="'+landfill.name+'"><h3>'+landfill.name+'</h3><span class="last-measurement-badge">'+lastDateStr+'</span>';
       card.addEventListener('click', () => {
         document.querySelectorAll('.landfill-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
