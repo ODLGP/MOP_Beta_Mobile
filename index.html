@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="hr">
 <head>
 <meta charset="utf-8">
@@ -398,6 +398,56 @@ body.dark .bottom-nav{background:var(--card);}
 @media(min-width:600px){
   .filter-bar{grid-template-columns:repeat(4,1fr);}
   .filter-bar .filter-btns{grid-column:auto;}
+
+/* ---------- Filter bar ---------- */
+.filter-bar{
+  background:var(--card);border-radius:12px;padding:14px;
+  box-shadow:var(--shadow);margin-bottom:14px;
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+}
+.filter-group{display:flex;flex-direction:column;gap:4px;}
+.filter-group label{font-size:12px;font-weight:600;color:var(--label);}
+.filter-group select,.filter-group input{
+  padding:9px 10px;border:1.5px solid var(--input-border);border-radius:8px;
+  font-size:14px;background:var(--input-bg);color:var(--text);width:100%;
+}
+.filter-btns{grid-column:1 / -1;display:flex;gap:8px;margin-top:2px;}
+.filter-btns button{
+  flex:1;padding:11px;border-radius:8px;font-size:14px;font-weight:600;
+  border:none;cursor:pointer;
+}
+#apply-filters-btn{background:var(--primary);color:#fff;}
+#clear-filters-btn{background:var(--card);color:var(--primary);border:1.5px solid var(--border)!important;}
+
+/* ---------- History item ---------- */
+.history-item{
+  background:var(--card);border-radius:12px;padding:14px;
+  margin-bottom:10px;box-shadow:var(--shadow);
+}
+.history-item h3{font-size:15px;font-weight:700;color:var(--primary);margin:0 0 8px;}
+.history-item p{font-size:13px;margin:3px 0;color:var(--text);}
+.history-item p strong{color:var(--label);}
+.hist-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;}
+.hist-actions button{
+  padding:9px 4px;font-size:12px;font-weight:600;border:none;
+  border-radius:8px;cursor:pointer;color:#fff;white-space:nowrap;
+}
+/* ---------- Backup bar ---------- */
+#backup-bar{
+  background:linear-gradient(135deg,#1a237e,#283593);border-radius:10px;
+  padding:12px 14px;margin-bottom:10px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.bb-info .bb-title{font-weight:700;font-size:14px;color:#fff;}
+.bb-info .bb-sub{font-size:12px;color:rgba(255,255,255,0.8);margin-top:2px;}
+.bb-btns{display:flex;gap:6px;flex-wrap:wrap;}
+.bb-btns button,.bb-btns select{
+  flex:1;min-width:0;padding:8px 6px;font-size:12px;border-radius:6px;
+  border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;
+  background:rgba(255,255,255,0.15);font-weight:600;
+}
+.backup-viewer-link{text-align:right;margin-bottom:10px;margin-top:-4px;}
+.backup-viewer-link a{font-size:12px;color:var(--primary);text-decoration:none;}
 }
 </style>
 <script>
@@ -465,7 +515,7 @@ body.dark .bottom-nav{background:var(--card);}
           <div class="bb-title">💾 Backup mjerenja</div>
           <div id="backup-bar-info" class="bb-sub"></div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <div class="bb-btns">
           <button id="backup-month-btn" onclick="backupCurrentMonth()">📥 Ovaj mjesec</button>
           <select id="backup-month-select"></select>
           <button onclick="backupSelectedMonth()">📥 Odabrani</button>
@@ -1652,7 +1702,20 @@ function updateHistoryList(filtered = null) {
     const ventCount = m.vents ? m.vents.length : 0;
     const vrijemePocetka = m.startTime || 'Nije upisano';
     const vrijemeZavrsetka = m.endTime || 'Nije upisano';
-    item.innerHTML = '<h3>'+(m.landfill.name)+'</h3><p><strong>Datum:</strong> '+m.date+'</p><p><strong>Vrijeme:</strong> '+vrijemePocetka+' - '+vrijemeZavrsetka+'</p><p><strong>Mjeritelj:</strong> '+m.measurer+'</p><p><strong>Uređaj:</strong> '+m.device+'</p><p><strong>Broj odušnika:</strong> '+ventCount+'</p><div class="button-group"><button class="share-btn" onclick="shareMeasurement('+originalIndex+')">📤 Podijeli</button><button onclick="editMeasurement('+originalIndex+')">Uredi</button><button style="background:#e74c3c;" onclick="deleteMeasurement('+originalIndex+')">Obriši</button><button style="background:#2c3e50;" onclick="exportToExcel('+originalIndex+')">💾 Excel</button><button style="background:#c62828;" onclick="exportToPDF('+originalIndex+')">📄 PDF</button><button style="background:#6a1b9a;" onclick="setReminder('+originalIndex+')">🔔 Podsjetnik</button></div>';
+    item.innerHTML = '<h3>'+(m.landfill.name)+'</h3>'
+      +'<p><strong>Datum:</strong> '+m.date+'</p>'
+      +'<p><strong>Vrijeme:</strong> '+vrijemePocetka+' - '+vrijemeZavrsetka+'</p>'
+      +'<p><strong>Mjeritelj:</strong> '+m.measurer+'</p>'
+      +'<p><strong>Uređaj:</strong> '+m.device+'</p>'
+      +'<p><strong>Broj odušnika:</strong> '+ventCount+'</p>'
+      +'<div class="hist-actions">'
+      +'<button style="background:#3498db;" onclick="shareMeasurement('+originalIndex+')">📤 Podijeli</button>'
+      +'<button style="background:var(--primary);" onclick="editMeasurement('+originalIndex+')">✏️ Uredi</button>'
+      +'<button style="background:#e74c3c;" onclick="deleteMeasurement('+originalIndex+')">🗑️ Obriši</button>'
+      +'<button style="background:#2c3e50;" onclick="exportToExcel('+originalIndex+')">💾 Excel</button>'
+      +'<button style="background:#c62828;" onclick="exportToPDF('+originalIndex+')">📄 PDF</button>'
+      +'<button style="background:#6a1b9a;" onclick="setReminder('+originalIndex+')">🔔 Podsjetnik</button>'
+      +'</div>';
     historyList.appendChild(item);
   });
 }
