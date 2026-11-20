@@ -76,7 +76,7 @@ body.dark{
   --shadow-md:0 4px 16px rgba(0,0,0,0.5);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{margin:0;padding:0;}
+html,body{margin:0;padding:0;overflow-x:hidden;}
 body{
   font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;
   color:var(--text);
@@ -120,7 +120,7 @@ input,select,textarea{font-family:inherit;}
 
 /* ---------- App shell ---------- */
 #app{display:none;min-height:100vh;}
-#content{padding-bottom:74px;max-width:680px;margin:0 auto;}
+#content{padding-bottom:74px;max-width:680px;margin:0 auto;width:100%;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 
 /* Sync banner */
@@ -133,7 +133,7 @@ input,select,textarea{font-family:inherit;}
 /* Top app bar */
 .app-topbar{
   display:flex;align-items:center;justify-content:space-between;
-  padding:14px 16px 6px;max-width:680px;margin:0 auto;
+  padding:14px 16px 6px;
 }
 .app-topbar .at-title{font-size:17px;font-weight:700;color:var(--primary);}
 .app-topbar .at-clock{font-size:13px;color:var(--secondary-text);font-weight:600;}
@@ -382,7 +382,7 @@ body.dark .fc-hour-card.has-rain{background:#0d2a3f;border-color:#1976d2;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
 /* ---------- Bottom nav ---------- */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);display:flex;height:64px;z-index:100;box-shadow:0 -2px 8px rgba(0,0,0,0.08);max-width:680px;margin:0 auto;}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);display:flex;height:64px;z-index:100;box-shadow:0 -2px 8px rgba(0,0,0,0.08);}
 body.dark .bottom-nav{background:var(--card);}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:var(--secondary-text);}
 .nav-item .nav-icon{font-size:20px;line-height:1;}
