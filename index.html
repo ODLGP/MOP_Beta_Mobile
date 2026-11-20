@@ -2275,6 +2275,14 @@ function toggleManuals() {
 // === INIT APP ===
 function initApp() {
   if ('serviceWorker' in navigator) {
+    // Deregistriraj stare SW i obrisi cacheove pri svakom učitavanju
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+      regs.forEach(function(reg) { reg.unregister(); });
+    });
+    caches.keys().then(function(names) {
+      names.forEach(function(name) { caches.delete(name); });
+    });
+    // Registriraj novi SW
     window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js'); });
   }
   const measurerSelect = document.getElementById('measurer-select');
