@@ -1,17 +1,13 @@
-const CACHE_NAME = 'mop-mjerenje-v73';
+const CACHE_NAME = 'mop-mjerenje-v74';
 const urlsToCache = [
-  './index.html',
   './manifest.json',
   './icon-192.png',
+  './icon-512.png',
   './rename_vent.js',
   './chart_view.js',
-  './backup_viewer.html',
-  // ai_assistant.js se NE cachira - uvijek svježe s mreže
-  './icon-512.png',
-  // Slike uređaja
+  './prev_measurement.js',
   './slike/uredjaji/GA5000.jpg',
   './slike/uredjaji/Optima-Biogas.png',
-  // Slike odlagališta
   './slike/odlagalista/Krizevci.jpg',
   './slike/odlagalista/Koprivnica.jpg',
   './slike/odlagalista/Virovitica.jpg',
@@ -31,29 +27,25 @@ const urlsToCache = [
   './slike/odlagalista/Bedekovcina.jpg',
   './slike/odlagalista/Rovinj.jpg',
   './slike/odlagalista/Pazin.jpg',
-  './slike/odlagalista/Biljane-Donje.jpg',
-  'https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js'
+  './slike/odlagalista/Biljane-Donje.jpg'
 ];
 
 self.addEventListener('install', event => {
-  // Odmah preuzmi kontrolu bez čekanja
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then(cache => {
+      return Promise.allSettled(urlsToCache.map(url => cache.add(url).catch(() => {})));
+    })
   );
 });
 
 self.addEventListener('activate', event => {
-  // Odmah preuzmi kontrolu nad svim tabovima
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
-      caches.keys().then(cacheNames =>
-        Promise.all(
-          cacheNames
-            .filter(name => name !== CACHE_NAME)
-            .map(name => caches.delete(name))
-        )
+      // Obrisi SVE stare cacheove
+      caches.keys().then(names =>
+        Promise.all(names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n)))
       )
     ])
   );
@@ -62,42 +54,32 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Za JS fajlove - uvijek dohvati s mreže, cache kao fallback
+  // index.html i HTML dokumenti — UVIJEK s mreže, nikad iz cachea
+  if (event.request.destination === 'document' ||
+      url.pathname.endsWith('index.html') ||
+      url.pathname.endsWith('/')) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' })
+        .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  // JS fajlovi — uvijek s mreže
   if (event.request.destination === 'script') {
     event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          return response;
-        })
+      fetch(event.request, { cache: 'no-store' })
         .catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // Za HTML fajlove - uvijek dohvati s mreže, cache kao fallback
-  if (event.request.destination === 'document') {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  // Za ostale resurse - cache first, mreža kao fallback
+  // Slike i ostalo — cache first
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
       return fetch(event.request).then(response => {
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
-        }
+        if (!response || response.status !== 200) return response;
         const clone = response.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         return response;
