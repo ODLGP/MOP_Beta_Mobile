@@ -1,0 +1,5110 @@
+﻿<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MOP Mjerenje">
+<meta name="theme-color" content="#2e7d32">
+<meta name="description" content="Aplikacija za mjerenje emisija plinova iz odlagališta otpada">
+<title>♻️ Mjerenje odlagališnih plinova</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAjAHmqlfgPJxdlrGmyM-r7CgF7lIuLGCw",
+    authDomain: "mop-admin.firebaseapp.com",
+    projectId: "mop-admin",
+    storageBucket: "mop-admin.firebasestorage.app",
+    messagingSenderId: "583593879937",
+    appId: "1:583593879937:web:97447a5b9aac2659482080"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  window.firebaseDB = db;
+  window.firebaseFunctions = { doc, getDoc, setDoc };
+  window.firebaseReady = true;
+  document.dispatchEvent(new Event('firebaseReady'));
+</script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root {
+  --primary:        #1e3a5f;
+  --primary-light:  #2a5298;
+  --primary-hover:  #163050;
+  --accent:         #2a7ae4;
+  --accent-light:   #e8f0fc;
+  --secondary:      #475569;
+  --success:        #15803d;
+  --danger:         #b91c1c;
+  --warning:        #b45309;
+  --bg-color:       #f1f5f9;
+  --card-bg:        #ffffff;
+  --input-bg:       #ffffff;
+  --input-border:   #cbd5e1;
+  --input-focus:    #2a7ae4;
+  --text-color:     #0f172a;
+  --label-color:    #374151;
+  --secondary-text: #64748b;
+  --table-header-bg:#1e3a5f;
+  --table-border:   #e2e8f0;
+  --hover-bg:       #f8fafc;
+  --card-shadow:    0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --card-shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --light-bg:       #f1f5f9;
+  --radius-sm:      4px;
+  --radius:         6px;
+  --radius-lg:      8px;
+}
+body.dark {
+  --primary:        #3b82f6;
+  --primary-light:  #60a5fa;
+  --primary-hover:  #2563eb;
+  --accent:         #3b82f6;
+  --accent-light:   #1e3a5f;
+  --bg-color:       #0f172a;
+  --card-bg:        #1e293b;
+  --input-bg:       #1e293b;
+  --input-border:   #334155;
+  --input-focus:    #3b82f6;
+  --text-color:     #f1f5f9;
+  --label-color:    #cbd5e1;
+  --secondary-text: #94a3b8;
+  --table-header-bg:#1e3a5f;
+  --table-border:   #334155;
+  --hover-bg:       #263348;
+  --card-shadow:    0 1px 3px rgba(0,0,0,0.3);
+  --card-shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+}
+#dark-toggle {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 9999;
+  background: var(--card-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius);
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--card-shadow);
+  padding: 0;
+  margin: 0;
+  transition: background 0.2s, border 0.2s;
+}
+body {
+  max-width: 900px;
+  margin: 0 auto;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: var(--text-color);
+  font-size: 15px;
+  padding: 20px 16px;
+  background-color: var(--bg-color);
+  transition: background-color 0.2s, color 0.2s;
+  line-height: 1.5;
+}
+.screen {
+  display: none;
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 20px;
+  border: 1px solid var(--table-border);
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.18s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.screen::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--primary);
+}
+.login-header, .topbar {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.logo {
+  display: block;
+  margin: 0 auto 15px;
+  max-width: 300px;
+}
+h1 {
+  color: var(--text-color);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin-top: 0;
+}
+h2 {
+  color: var(--text-color);
+  font-size: 17px;
+  font-weight: 600;
+  margin-top: 0;
+}
+h3 {
+  color: var(--text-color);
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 0;
+}
+h4, h5, h6 {
+  color: var(--text-color);
+}
+label {
+  color: var(--label-color);
+  font-weight: 500;
+  font-size: 13px;
+}
+p {
+  color: var(--text-color);
+}
+.login-header p, .login-footer p {
+  color: var(--secondary-text);
+  font-size: 13px;
+}
+span { color: var(--text-color); }
+td   { color: var(--text-color); }
+
+select, input, textarea {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  font-family: inherit;
+}
+select:focus, input:focus, textarea:focus {
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px rgba(42,122,228,0.12);
+  outline: none;
+  transform: none;
+}
+button {
+  background-color: var(--primary);
+  color: white;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s, box-shadow 0.15s;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-family: inherit;
+  letter-spacing: 0.1px;
+  width: 100%;
+  margin-bottom: 14px;
+}
+button:hover {
+  background-color: var(--primary-hover);
+  transform: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+button:active {
+  transform: none;
+  box-shadow: none;
+}
+button.secondary {
+  background-color: var(--secondary);
+}
+button.secondary:hover {
+  background-color: #374151;
+}
+.success-message {
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  text-align: center;
+  margin: 12px 0;
+  display: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+.warning-message {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  margin: 12px 0;
+  text-align: center;
+  display: none;
+  border: 1px solid #fecaca;
+  font-size: 13px;
+}
+.button-group {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+.button-group button {
+  flex: 1;
+  margin-bottom: 0;
+}
+.vent-table-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: var(--card-shadow);
+  margin-top: 20px;
+}
+.vent-table {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.vent-table th, .vent-table td {
+  border: 1px solid var(--table-border);
+  padding: 7px 10px;
+  text-align: center;
+}
+.vent-table th {
+  background-color: var(--table-header-bg);
+  color: white;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.vent-table td {
+  white-space: nowrap;
+  cursor: pointer;
+  background-color: var(--card-bg);
+  transition: background-color 0.1s;
+}
+.vent-table td:hover {
+  background-color: var(--hover-bg);
+}
+.vent-table td:last-child {
+  white-space: normal;
+  cursor: default;
+}
+.form-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.form-group > div {
+  display: flex;
+  flex-direction: column;
+}
+.status-group {
+  display: flex;
+  gap: 15px;
+  margin: 10px 0;
+  align-items: center;
+}
+textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.history-item {
+  background: var(--card-bg);
+  border: 1px solid var(--table-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 10px;
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.15s;
+}
+.history-item:hover {
+  transform: none;
+  box-shadow: var(--card-shadow-md);
+}
+#landfill-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--table-border);
+}
+#vent-form {
+  display: none;
+  background: var(--card-bg);
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow-md);
+  margin: 16px 0;
+  border: 1px solid var(--table-border);
+  border-top: 3px solid var(--primary);
+}
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+.topbar button {
+  width: auto;
+  padding: 8px 16px;
+  font-size: 13px;
+  background: var(--secondary);
+  margin-bottom: 0;
+}
+.login-container {
+  max-width: 480px;
+  margin: 0 auto;
+}
+.device-selector {
+  margin: 16px 0;
+  padding: 14px;
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--input-border);
+  border-left: 3px solid var(--primary);
+}
+.device-dropdown-label {
+  font-size: 13px;
+  color: var(--label-color);
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: block;
+}
+.device-dropdown {
+  position: relative;
+  margin-bottom: 14px;
+}
+.device-dropdown-selected {
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--input-bg);
+  color: var(--text-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  transition: border-color 0.15s;
+}
+.device-dropdown-selected img {
+  width: 36px;
+  height: 30px;
+  object-fit: contain;
+  border-radius: 5px;
+  margin-right: 12px;
+  border: 1px solid var(--input-border);
+  background: var(--card-bg);
+}
+.device-dropdown-list {
+  position: absolute;
+  left: 0; right: 0; top: 110%;
+  background: var(--card-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 100;
+  display: none;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 0;
+  margin: 0;
+}
+.device-dropdown-list.open { display: block; }
+.device-dropdown-option {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--input-border);
+  background: var(--card-bg);
+  color: var(--text-color);
+  font-size: 16px;
+}
+.device-dropdown-option:last-child { border-bottom: none; }
+.device-dropdown-option:hover, .device-dropdown-option.selected {
+  background: var(--hover-bg);
+}
+.device-dropdown-option img {
+  width: 38px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 5px;
+  margin-right: 12px;
+  border: 1px solid var(--input-border);
+  background: var(--card-bg);
+}
+.device-dropdown-arrow {
+  margin-left: auto;
+  font-size: 18px;
+  color: var(--label-color);
+  pointer-events: none;
+}
+.login-footer {
+  text-align: center;
+  margin-top: 25px;
+  font-size: 14px;
+  color: var(--secondary-text);
+}
+.notif-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.notif-item.notif-admin { background: #e8f5e9; border-left: 3px solid #4caf50; }
+.notif-item.notif-measurement { background: #e3f2fd; border-left: 3px solid #2196f3; }
+.notif-item .notif-time { color: #999; font-size: 11px; margin-top: 2px; white-space: nowrap; }
+.notif-item .notif-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+#history-list .history-item .button-group {
+  margin-top: 15px;
+}
+#add-vent-btn {
+  margin: 15px 0;
+  background: #2196F3;
+}
+#add-vent-btn:hover {
+  background: #0b7dda;
+}
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.landfill-card {
+  border: 1px solid var(--table-border);
+  border-radius: var(--radius);
+  padding: 12px;
+  text-align: center;
+  background: var(--card-bg);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: var(--card-shadow);
+  position: relative;
+  overflow: hidden;
+}
+.landfill-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--card-shadow-md);
+}
+.landfill-card.selected {
+  border: 2px solid var(--primary);
+  background-color: var(--primary);
+  color: white;
+}
+.landfill-card.selected h3 {
+  color: white;
+}
+.landfill-card img {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  border: 1px solid var(--table-border);
+}
+.last-measurement-badge {
+  font-size: 11px;
+  color: var(--secondary-text);
+  margin-top: 3px;
+  display: block;
+}
+.landfill-card.selected .last-measurement-badge { color: rgba(255,255,255,0.75); }
+
+/* Skeleton loader */
+.skeleton-card {
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+.skeleton-img {
+  width: 100%;
+  height: 80px;
+  background: linear-gradient(90deg, var(--hover-bg) 25%, var(--table-border) 50%, var(--hover-bg) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+.skeleton-line {
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--hover-bg) 25%, var(--table-border) 50%, var(--hover-bg) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  margin: 5px auto;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Datetime display on login */
+#login-datetime {
+  font-size: 15px;
+  color: var(--primary);
+  font-weight: 600;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+.time-select-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.time-select-group select {
+  width: auto;
+  min-width: 70px;
+  margin-bottom: 0;
+}
+#vent-select-modal {
+  display: none;
+  position: fixed;
+  z-index: 2000;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.33);
+  align-items: center;
+  justify-content: center;
+}
+#vent-select-modal .modal-content {
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 30px 25px 20px 25px;
+  min-width: 250px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  text-align: center;
+}
+#vent-select-modal select {
+  width: 100%;
+  margin-bottom: 18px;
+}
+#vent-select-modal button {
+  width: 100%;
+}
+#landfill-name-display {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 2rem;
+  color: var(--primary);
+}
+#manual-vent-modal {
+  display: none;
+  position: fixed;
+  z-index: 2100;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.33);
+  align-items: center;
+  justify-content: center;
+}
+#manual-vent-modal .modal-content {
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 30px 25px 20px 25px;
+  min-width: 250px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  text-align: center;
+}
+#manual-vent-modal input {
+  width: 100%;
+  margin-bottom: 18px;
+}
+#success-modal {
+  display: none;
+  position: fixed;
+  z-index: 3000;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  align-items: center;
+  justify-content: center;
+}
+#success-modal .modal-content {
+  background: var(--card-bg);
+  border-radius: 15px;
+  padding: 50px 40px;
+  min-width: 400px;
+  max-width: 500px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  text-align: center;
+  animation: slideIn 0.3s ease-out;
+}
+@keyframes slideIn {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+#success-modal .success-icon {
+  font-size: 80px;
+  color: var(--primary);
+  margin-bottom: 20px;
+}
+#success-modal h2 {
+  color: var(--primary);
+  font-size: 28px;
+  margin-bottom: 15px;
+}
+#success-modal p {
+  color: var(--secondary-text);
+  font-size: 16px;
+  margin-bottom: 30px;
+}
+#success-modal button {
+  width: 100%;
+  padding: 15px;
+  font-size: 18px;
+  background: var(--primary);
+  margin-bottom: 0;
+}
+.filter-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  background: var(--card-bg);
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: var(--card-shadow);
+  align-items: end;
+}
+.filter-bar .filter-group {
+  display: flex;
+  flex-direction: column;
+}
+.filter-bar button {
+  width: 100%;
+  margin-bottom: 0;
+}
+.share-btn {
+  background-color: #3498db;
+}
+.share-btn:hover {
+  background-color: #2980b9;
+}
+@media (max-width: 600px) {
+  body {
+    padding: 10px;
+    font-size: 15px;
+  }
+  .form-group {
+    grid-template-columns: 1fr;
+  }
+  .time-select-group select {
+    min-width: 60px;
+  }
+}
+
+/* Icon styles */
+.icon {
+  width: 24px;
+  height: 24px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+/* Landfill cards animation */
+.landfill-card {
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+/* History item */
+.history-item {
+  animation: none;
+}
+
+/* Comparison panel */
+.comparison-panel {
+  background: var(--card-bg);
+  border: 2px dashed var(--primary);
+  border-radius: 10px;
+  padding: 15px;
+  margin: 15px 0;
+  display: none;
+}
+.comparison-panel.show {
+  display: none !important;
+}
+.comparison-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.comparison-title {
+  font-weight: 600;
+  color: var(--primary);
+}
+.comparison-date {
+  font-size: 14px;
+  color: var(--secondary-text);
+}
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+.comparison-item {
+  text-align: center;
+  padding: 8px;
+  background: var(--input-bg);
+  border-radius: 6px;
+}
+.comparison-label {
+  font-size: 12px;
+  color: var(--secondary-text);
+  margin-bottom: 4px;
+}
+.comparison-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+.comparison-diff {
+  font-size: 11px;
+  margin-top: 2px;
+}
+.comparison-diff.up {
+  color: #f44336;
+}
+.comparison-diff.down {
+  color: #4caf50;
+}
+.comparison-diff.same {
+  color: var(--secondary-text);
+}
+
+/* Interactive Map */
+.map-container {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 20px 0;
+  cursor: zoom-in;
+  overflow: visible;
+}
+.map-container img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+}
+.vent-marker {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #f44336;
+  border: 2px solid white;
+  border-radius: 50%;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 9px;
+  z-index: 10;
+}
+.vent-marker:hover {
+  transform: translate(-50%, -50%) scale(1.5);
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.vent-marker.measured {
+  background: #4caf50;
+}
+.vent-marker.not-measurable {
+  background: #9e9e9e;
+}
+.vent-marker-label {
+  position: absolute;
+  bottom: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.75);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  display: none;
+  pointer-events: none;
+}
+.vent-marker:hover .vent-marker-label {
+  display: block;
+}
+
+/* Image Zoom Modal */
+.image-zoom-modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.95);
+  align-items: center;
+  justify-content: center;
+}
+.image-zoom-modal.active {
+  display: flex;
+}
+.image-zoom-content {
+  position: relative;
+  max-width: 95vw;
+  max-height: 85vh;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.image-zoom-content .map-container {
+  position: relative;
+  display: inline-block;
+  cursor: grab;
+  transition: transform 0.2s ease;
+}
+.image-zoom-content .map-container.dragging {
+  cursor: grabbing;
+}
+.image-zoom-content .map-container img {
+  display: block;
+  max-width: none;
+  width: auto;
+  height: auto;
+}
+.image-zoom-content .vent-marker {
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.image-zoom-content .vent-marker:hover {
+  transform: translate(-50%, -50%) scale(1.8) !important;
+}
+.zoom-close {
+  position: fixed;
+  top: 20px;
+  right: 30px;
+  color: white;
+  font-size: 40px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 10000;
+  background: rgba(0,0,0,0.5);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+.zoom-close:hover {
+  background: rgba(0,0,0,0.8);
+  transform: rotate(90deg);
+}
+.zoom-controls {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 10000;
+}
+.zoom-btn {
+  background: rgba(0,0,0,0.7);
+  color: white;
+  border: none;
+  padding: 15px 20px;
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s;
+  width: auto;
+  margin: 0;
+}
+.zoom-btn:hover {
+  background: rgba(0,0,0,0.9);
+  transform: scale(1.1);
+}
+
+/* ── Forecast screen ── */
+.forecast-sum-strip { display:flex; gap:8px; min-width:max-content; }
+.fc-sum-card {
+  flex-shrink:0; background:var(--card-bg,#fff); border-radius:10px;
+  padding:10px 12px; text-align:center; min-width:68px;
+  border:2px solid var(--input-border,#ddd); cursor:pointer;
+  transition:border-color 0.2s; box-shadow:0 2px 6px rgba(0,0,0,0.07);
+}
+.fc-sum-card.active { border-color:#1565c0; }
+.fc-sum-card.rain-day { border-color:#1976d2; background:#e3f2fd; }
+body.dark .fc-sum-card.rain-day { background:#0d2a3f; }
+.fc-sum-card .fsc-day  { font-size:11px;color:var(--secondary-text,#888);font-weight:600;margin-bottom:3px; }
+.fc-sum-card .fsc-icon { font-size:22px;margin-bottom:2px; }
+.fc-sum-card .fsc-temp { font-size:12px;font-weight:700; }
+.fc-sum-card .fsc-rain { font-size:10px;color:#1976d2;margin-top:2px; }
+
+.fc-detail-header {
+  background:linear-gradient(135deg,#0d47a1,#1565c0); color:white;
+  border-radius:10px 10px 0 0; padding:14px 16px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.fc-stats-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:1px; background:var(--input-border,#ddd);
+  border:1px solid var(--input-border,#ddd); border-top:none;
+}
+.fc-stat {
+  background:var(--card-bg,#fff); padding:11px 14px;
+}
+.fc-stat .fst-lbl { font-size:11px;color:var(--secondary-text,#888);font-weight:600;margin-bottom:3px; }
+.fc-stat .fst-val { font-size:17px;font-weight:700; }
+.fc-stat .fst-unit{ font-size:11px;color:var(--secondary-text,#888); }
+
+.fc-mstatus {
+  padding:11px 16px; border:1px solid var(--input-border,#ddd);
+  border-top:none; font-size:13px; font-weight:600;
+}
+.fc-hourly-title {
+  background:var(--card-bg,#fff); border:1px solid var(--input-border,#ddd);
+  border-top:none; padding:10px 16px 6px; font-size:13px;
+  font-weight:600; color:var(--secondary-text,#888);
+}
+.fc-hourly-scroll {
+  background:var(--card-bg,#fff); border:1px solid var(--input-border,#ddd);
+  border-top:none; border-radius:0 0 10px 10px;
+  overflow-x:auto; padding:0 8px 12px;
+}
+.fc-hourly-row { display:flex; gap:6px; min-width:max-content; padding-top:8px; }
+.fc-hour-card {
+  flex-shrink:0; width:66px; background:var(--hover-bg,#f5f5f5);
+  border-radius:8px; padding:7px 5px; text-align:center;
+  border:1px solid var(--input-border,#ddd);
+}
+.fc-hour-card.has-rain { background:#e3f2fd; border-color:#90caf9; }
+body.dark .fc-hour-card.has-rain { background:#0d2a3f; border-color:#1976d2; }
+.fhc-time { font-size:11px;font-weight:700;color:var(--secondary-text,#888);margin-bottom:3px; }
+.fhc-icon { font-size:19px;margin-bottom:2px; }
+.fhc-temp { font-size:13px;font-weight:700;margin-bottom:2px; }
+.fhc-prob { font-size:10px;color:#1976d2;font-weight:600; }
+.fhc-rain { font-size:10px;color:#1976d2; }
+.fhc-wind { font-size:10px;color:var(--secondary-text,#888);margin-top:2px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+</style>
+</head>
+<body>
+<button id="dark-toggle" title="Tamni/svijetli mod" onclick="toggleDark()">🌙</button>
+
+<div class="screen" id="password-screen">
+  <div class="login-container">
+    <div class="login-header">
+      <h1>
+        <svg class="icon" viewBox="0 0 24 24" style="width:32px;height:32px;fill:var(--primary);">
+          <path d="M17 6H22V8H20V21C20 21.5523 19.5523 22 19 22H5C4.44772 22 4 21.5523 4 21V8H2V6H7V3C7 2.44772 7.44772 2 8 2H16C16.5523 2 17 2.44772 17 3V6ZM18 8H6V20H18V8ZM9 11H11V17H9V11ZM13 11H15V17H13V11ZM9 4V6H15V4H9Z"/>
+        </svg>
+        Mjerenje odlagališnih plinova
+      </h1>
+      <p style="color:#666;margin:10px 0;">Unesite pristupni kod:</p>
+    </div>
+    <form autocomplete="off" id="password-form">
+      <label for="password-input">Pristupni kod:</label>
+      <input type="password" id="password-input" placeholder="Unesite kod" required autofocus>
+      <button type="submit">Prijavi se</button>
+    </form>
+    <div class="login-footer">
+      <p>Sustav za praćenje emisija plinova iz odlagališta otpada</p>
+    </div>
+  </div>
+</div>
+<div class="screen" id="login-screen">
+  <div class="login-container">
+    <div class="login-header">
+      <h1>
+        <svg class="icon" viewBox="0 0 24 24" style="width:32px;height:32px;fill:var(--primary);">
+          <path d="M17 6H22V8H20V21C20 21.5523 19.5523 22 19 22H5C4.44772 22 4 21.5523 4 21V8H2V6H7V3C7 2.44772 7.44772 2 8 2H16C16.5523 2 17 2.44772 17 3V6ZM18 8H6V20H18V8ZM9 11H11V17H9V11ZM13 11H15V17H13V11ZM9 4V6H15V4H9Z"/>
+        </svg>
+        Mjerenje odlagališnih plinova
+      </h1>
+      <div id="login-datetime"></div>
+      <p style="color:#666;margin:10px 0;">Odaberite mjeritelja i uređaj za početak:</p>
+    </div>
+    <form autocomplete="off" id="login-form">
+      <label for="measurer-select">Mjeritelj:</label>
+      <select id="measurer-select" required>
+        <option value="">Odaberite mjeritelja</option>
+      </select>
+      <div class="device-selector">
+        <span class="device-dropdown-label">Korišteni uređaj za mjerenje:</span>
+        <div id="device-dropdown" class="device-dropdown" tabindex="0"></div>
+        <input type="hidden" id="device-select" name="device-select" required>
+      </div>
+      <button type="submit">Nastavi</button>
+    </form>
+    <div class="login-footer">
+      <p>Sustav za praćenje emisija plinova iz odlagališta otpada</p>
+      <button id="go-to-history" style="margin-top:20px;background:#e67e22;">
+        <svg class="icon" viewBox="0 0 24 24" style="width:20px;height:20px;fill:white;">
+          <path d="M12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12H4C4 16.4183 7.58172 20 12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C9.25022 4 6.82447 5.38734 5.38451 7.50024L8 7.5V9.5H2V3.5H4V5.99936C5.82381 3.57166 8.72764 2 12 2ZM13 7L12.9998 11.585L16.2426 14.8284L14.8284 16.2426L10.9998 12.413L11 7H13Z"/>
+        </svg>
+        Povijest mjerenja
+      </button>
+      <button id="go-to-forecast" style="margin-top:12px;background:#1565c0;">
+        ⛅ Vremenska prognoza
+      </button>
+    </div>
+
+    <!-- Obavijesti -->
+    <div id="notifications-section" style="margin-top:25px;text-align:left;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-size:18px;">🔔</span>
+        <strong style="color:#333;font-size:16px;">Obavijesti</strong>
+        <span id="notif-badge" style="display:none;background:#e74c3c;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;"></span>
+      </div>
+      <div id="notifications-list" style="max-height:280px;overflow-y:auto;">
+        <p style="color:#aaa;font-size:13px;text-align:center;">Učitavam obavijesti...</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="screen" id="template-landfill-screen">
+  <div class="topbar">
+    <button onclick="safeResetToLogin()" type="button">Povratak na naslovnu</button>
+  </div>
+  <h2>Odaberite odlagalište:</h2>
+  <div class="grid-container" id="landfill-grid"></div>
+  <div class="warning-message" id="template-landfill-warning"></div>
+  <div class="button-group">
+    <button id="template-landfill-next">Nastavi na mjerenje</button>
+  </div>
+</div>
+<div class="screen" id="new-measurement">
+  <div class="topbar">
+    <button onclick="safeResetToLogin()" type="button">Povratak na naslovnu</button>
+  </div>
+  <h1>Novo mjerenje</h1>
+  <form id="measurement-form">
+    <div class="form-group">
+      <div>
+        <label>Datum:</label>
+        <input id="measurement-date" required type="date">
+      </div>
+      <div>
+        <label>Vrijeme početka:</label>
+        <div class="time-select-group">
+          <select id="start-hour" required>
+            <option value="">Sat</option>
+          </select>
+          <span>:</span>
+          <select id="start-minute" required>
+            <option value="">Min</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:15px;">
+      <button type="button" id="refresh-weather-btn" style="background:#3498db;padding:10px;font-size:14px;">
+        🌤️ Osvježi vremenske podatke
+      </button>
+    </div>
+    <div class="form-group">
+      <div>
+        <label>Temperatura zraka (°C):</label>
+        <input id="air-temp" required step="0.1" type="number">
+      </div>
+      <div>
+        <label>Tlak zraka (hPa):</label>
+        <input id="air-pressure" required step="0.1" type="number">
+      </div>
+    </div>
+    <div class="form-group">
+      <div>
+        <label>Smjer vjetra:</label>
+        <input id="wind-direction" required type="text">
+      </div>
+      <div>
+        <label>Brzina vjetra (m/s):</label>
+        <input id="wind-speed" required step="0.1" type="number">
+      </div>
+    </div>
+    
+    <div class="button-group">
+      <button onclick="showScreen('template-landfill-screen')" type="button">Natrag</button>
+      <button id="measurement-submit-btn" type="submit">Nastavi na unos odušnika</button>
+    </div>
+  </form>
+</div>
+<div class="screen" id="vent-mapping">
+  <div class="topbar">
+    <button onclick="safeResetToLogin()" type="button">Povratak na naslovnu</button>
+  </div>
+  <h1 id="landfill-name-display"></h1>
+  
+  <img id="landfill-map" src="https://via.placeholder.com/800x500?text=Karta+odlagališta">
+  
+  <!-- Legenda -->
+  <div style="display:flex;gap:20px;justify-content:center;align-items:center;margin:15px 0;padding:15px;background:rgba(255,255,255,0.9);border-radius:8px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:16px;height:16px;background:#f44336;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></div>
+      <span style="font-size:14px;color:#333;font-weight:500;">Nije izmjeren</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:16px;height:16px;background:#4caf50;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></div>
+      <span style="font-size:14px;color:#333;font-weight:500;">Izmjeren</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:16px;height:16px;background:#9e9e9e;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></div>
+      <span style="font-size:14px;color:#333;font-weight:500;">Ne može se izmjeriti</span>
+    </div>
+  </div>
+  
+  <div style="display:flex;gap:10px;justify-content:center;margin-bottom:10px;">
+    <button id="add-vent-btn" style="flex:1;">Unesi novi odušnik</button>
+  </div>
+  <div class="success-message" id="success-message">
+    Mjerenje uspješno spremljeno! Podaci su pohranjeni.
+  </div>
+  <div class="warning-message" id="missing-vents-warning" style="display:none;"></div>
+  <div class="vent-table-container">
+    <table class="vent-table">
+      <thead>
+        <tr>
+          <th>Odušnik</th>
+          <th>CH₄ [%]</th>
+          <th>CO₂ [%]</th>
+          <th>O₂ [%]</th>
+          <th>H₂ (ppm)</th>
+          <th>H₂S (ppm)</th>
+          <th>Temp (°C)</th>
+          <th>Status</th>
+          <th>Napomena</th>
+          <th style="min-width:180px;">Akcija</th>
+        </tr>
+      </thead>
+      <tbody id="vent-list"></tbody>
+    </table>
+  </div>
+  <div class="button-group">
+    <button onclick="showScreen('new-measurement')">Natrag</button>
+    <button class="secondary" id="finish-measurement">Završi mjerenje</button>
+  </div>
+  <div id="vent-select-modal">
+    <div class="modal-content">
+      <h2>Odaberi odušnik</h2>
+      <select id="vent-select-dropdown">
+        <option value="">Odaberi odušnik</option>
+      </select>
+      <button id="vent-select-confirm">Dalje</button>
+      <button onclick="closeVentSelectModal()" style="margin-top:8px;background:#bbb;">Odustani</button>
+      <div style="margin-top:16px;">
+        <button id="manual-vent-open" style="background:#607d8b;">Ručno unesi novi odušnik</button>
+      </div>
+    </div>
+  </div>
+  <div id="manual-vent-modal">
+    <div class="modal-content">
+      <h2>Dodaj ručno novi odušnik</h2>
+      <input id="manual-vent-input" type="text" placeholder="Naziv odušnika">
+      <button id="manual-vent-confirm">Dodaj</button>
+      <button onclick="closeManualVentModal()" style="margin-top:8px;background:#bbb;">Odustani</button>
+    </div>
+  </div>
+  <div id="success-modal">
+    <div class="modal-content">
+      <div class="success-icon">✅</div>
+      <h2>Mjerenje završeno!</h2>
+      <p>Excel datoteka je automatski preuzeta.<br>Podaci su uspješno spremljeni u sustav.</p>
+      <button onclick="closeSuccessModal()">Vrati se na naslovnu stranicu</button>
+    </div>
+  </div>
+  <form id="vent-form">
+    <h2>Podaci odušnika</h2>
+    <input id="vent-index" type="hidden" value="-1">
+    <label>Naziv odušnika:</label>
+    <input id="vent-name" required type="text" readonly>
+    <button type="button" id="prev-measurement-btn" onclick="showPrevMeasurementModal()" style="background:#5c6bc0;padding:10px;font-size:14px;margin-top:5px;display:none;width:100%;">📋 Pogledaj prošlo mjerenje</button>
+    <button type="button" id="prev-measurement-btn" onclick="showPrevMeasurementModal()" style="background:#5c6bc0;padding:10px;font-size:14px;margin-top:5px;display:none;">📋 Pogledaj prošlo mjerenje</button>
+    
+    <!-- Comparison Panel -->
+    <div class="comparison-panel" id="comparison-panel">
+      <div class="comparison-header">
+        <span class="comparison-title">
+          <svg class="icon" viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--primary);">
+            <path d="M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM13 12H17V14H11V7H13V12Z"/>
+          </svg>
+          Prethodno mjerenje
+        </span>
+        <span class="comparison-date" id="comparison-date"></span>
+      </div>
+      <div class="comparison-grid" id="comparison-grid"></div>
+    </div>
+
+    <div class="form-group">
+      <div>
+        <label>CH₄ [%]:</label>
+        <input id="ch4" step="0.1" type="number" inputmode="decimal">
+      </div>
+      <div>
+        <label>CO₂ [%]:</label>
+        <input id="co2" step="0.1" type="number" inputmode="decimal">
+      </div>
+      <div>
+        <label>O₂ [%]:</label>
+        <input id="o2" step="0.1" type="number" inputmode="decimal">
+      </div>
+      <div>
+        <label>H₂ [ppm]:</label>
+        <input id="h2" type="number" step="1" inputmode="numeric">
+      </div>
+      <div>
+        <label>H₂S [ppm]:</label>
+        <input id="h2s" type="number" step="1" inputmode="numeric">
+      </div>
+      <div>
+        <label>Temp. odušnika (°C):</label>
+        <input id="vent-temp" step="0.1" type="number" inputmode="decimal">
+      </div>
+      <div>
+        <label>Promjer odušnika (cm):</label>
+        <input id="vent-diameter" step="1" type="number" inputmode="numeric" placeholder="npr. 10">
+      </div>
+    </div>
+    <label>Status:</label>
+    <div class="status-group">
+      <div>
+        <input checked id="status-measured" name="vent-status" type="radio" value="measured">
+        <label for="status-measured">Izmjeren</label>
+      </div>
+      <div>
+        <input id="status-not-measurable" name="vent-status" type="radio" value="not_measurable">
+        <label for="status-not-measurable">Ne može se izmjeriti</label>
+      </div>
+    </div>
+    <label>Napomena:</label>
+    <textarea id="vent-note"></textarea>
+    <div class="button-group">
+      <button onclick="document.getElementById('vent-form').style.display='none'" type="button">Odustani</button>
+      <button type="submit">Spremi odušnik</button>
+    </div>
+  </form>
+</div>
+<div class="screen" id="measurement-history">
+  <div class="topbar">
+    <button onclick="resetToLogin()" type="button">Povratak na naslovnu</button>
+  </div>
+  <h1>Povijest mjerenja</h1>
+
+  <!-- BACKUP TRAKA -->
+  <div id="backup-bar" style="background:linear-gradient(135deg,#1a237e,#283593);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <div style="color:white;">
+      <div style="font-weight:600;font-size:14px;">💾 Backup mjerenja</div>
+      <div id="backup-bar-info" style="font-size:12px;opacity:0.8;margin-top:2px;"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <button id="backup-month-btn" onclick="backupCurrentMonth()" style="background:#3949ab;border:1px solid rgba(255,255,255,0.3);color:white;padding:8px 14px;font-size:13px;border-radius:6px;cursor:pointer;width:auto;margin:0;">📥 Preuzmi ovaj mjesec</button>
+      <select id="backup-month-select" style="background:#283593;border:1px solid rgba(255,255,255,0.3);color:white;padding:8px 10px;font-size:13px;border-radius:6px;cursor:pointer;width:auto;margin:0;">
+        <option value="">📦 Odaberi mjesec...</option>
+      </select>
+      <button onclick="backupSelectedMonth()" style="background:#283593;border:1px solid rgba(255,255,255,0.3);color:white;padding:8px 14px;font-size:13px;border-radius:6px;cursor:pointer;width:auto;margin:0;">📥 Preuzmi odabrani</button>
+    </div>
+  </div>
+  <!-- BACKUP VIEWER LINK -->
+  <div style="text-align:right;margin-bottom:12px;margin-top:-8px;">
+    <a href="backup_viewer.html" target="_blank" style="font-size:12px;color:#3949ab;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">
+      📊 Otvori Backup Viewer — učitaj JSON i preuzmi Excel →
+    </a>
+  </div>
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label for="filter-landfill-select">Odlagalište:</label>
+      <select id="filter-landfill-select">
+        <option value="">Sva odlagališta</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filter-measurer-select">Mjeritelj:</label>
+      <select id="filter-measurer-select">
+        <option value="">Svi mjeritelji</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filter-start-date">Od datuma:</label>
+      <input type="date" id="filter-start-date">
+    </div>
+    <div class="filter-group">
+      <label for="filter-end-date">Do datuma:</label>
+      <input type="date" id="filter-end-date">
+    </div>
+    <button id="apply-filters-btn">Filtriraj</button>
+    <button id="clear-filters-btn" style="background:#6c757d;">Poništi filtere</button>
+  </div>
+  <div id="history-list"></div>
+  <button onclick="resetToLogin()">Povratak na naslovnu</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     VREMENSKA PROGNOZA SCREEN
+════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="forecast-screen">
+  <div class="topbar">
+    <button onclick="resetToLogin()" type="button">Povratak na naslovnu</button>
+  </div>
+  <h1>⛅ Vremenska prognoza</h1>
+
+  <!-- Odabir lokacije -->
+  <div style="background:var(--card-bg,#fff);border:1px solid var(--input-border,#ddd);border-radius:10px;padding:16px;margin-bottom:16px;">
+    <label style="font-size:13px;font-weight:600;color:var(--label-color,#555);display:block;margin-bottom:8px;">📍 Odaberi odlagalište:</label>
+    <select id="forecast-location-select" style="width:100%;margin-bottom:12px;">
+      <option value="">— Odaberi odlagalište —</option>
+    </select>
+    <button onclick="loadForecast()" style="background:#1565c0;">⛅ Prikaži prognozu</button>
+  </div>
+
+  <!-- Loading -->
+  <div id="forecast-loading" style="display:none;text-align:center;padding:30px;">
+    <div style="width:36px;height:36px;border:4px solid #ddd;border-top-color:#1565c0;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px;"></div>
+    Dohvaćam vremensku prognozu...
+  </div>
+
+  <!-- Rain warning -->
+  <div id="forecast-rain-warning" style="display:none;border-radius:10px;padding:14px 16px;margin-bottom:14px;font-size:14px;line-height:1.6;"></div>
+
+  <!-- Summary strip -->
+  <div id="forecast-summary-strip" style="display:none;overflow-x:auto;padding-bottom:8px;margin-bottom:14px;"></div>
+
+  <!-- Detail panel -->
+  <div id="forecast-detail-panel"></div>
+</div>
+<script>
+
+// === DARK MODE ===
+function toggleDark() {
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('darkMode', isDark ? '1' : '0');
+  document.getElementById('dark-toggle').textContent = isDark ? '☀️' : '🌙';
+}
+(function() {
+  const saved = localStorage.getItem('darkMode');
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (saved === '1' || (saved === null && prefersDark)) {
+    document.body.classList.add('dark');
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('dark-toggle');
+      if (btn) btn.textContent = '☀️';
+    });
+  }
+})();
+
+
+  
+// === LOAD CUSTOM DATA FROM ADMIN PANEL ===
+
+// Extract city name from landfill name
+function extractCityFromLandfillName(name) {
+  // Remove common prefixes
+  let cityName = name
+    .replace(/^Odlagalište otpada\s*/i, '')
+    .replace(/^Odlagalište\s*/i, '')
+    .trim();
+  
+  // If there's a dash, take the part after it (e.g., "Split - Karepovac" -> "Split")
+  if (cityName.includes(' - ')) {
+    cityName = cityName.split(' - ')[0].trim();
+  }
+  
+  // If there's multiple words, take the first significant one
+  const parts = cityName.split(' - ');
+  if (parts.length > 1) {
+    cityName = parts[parts.length - 1].trim();
+  }
+  
+  return cityName;
+}
+
+// Get coordinates for a city using Nominatim Geocoding API
+async function getCoordinatesForCity(cityName) {
+  try {
+    // Use Nominatim (OpenStreetMap) geocoding API
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)},Croatia&format=json&limit=1`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'MOP-Aplikacija/1.0'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Geocoding API error');
+    }
+    
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lon: parseFloat(data[0].lon),
+        found: true
+      };
+    }
+  } catch (error) {
+    console.error('Error fetching coordinates for city:', error);
+  }
+  
+  // Return not found status
+  return { lat: null, lon: null, found: false };
+}
+
+// Extract coordinates from Google Maps link
+function extractCoordinatesFromMapsLink(mapsLink) {
+  if (!mapsLink) return { lat: null, lon: null };
+  
+  try {
+    // Try to find coordinates in the URL
+    // Pattern: @lat,lon or q=lat,lon or /lat,lon
+    const patterns = [
+      /@(-?\d+\.\d+),(-?\d+\.\d+)/,  // @45.8150,15.9819
+      /q=(-?\d+\.\d+),(-?\d+\.\d+)/, // q=45.8150,15.9819
+      /\/(-?\d+\.\d+),(-?\d+\.\d+)/, // /45.8150,15.9819
+    ];
+    
+    for (const pattern of patterns) {
+      const match = mapsLink.match(pattern);
+      if (match) {
+        return {
+          lat: parseFloat(match[1]),
+          lon: parseFloat(match[2])
+        };
+      }
+    }
+  } catch (e) {
+    console.error('Error extracting coordinates:', e);
+  }
+  
+  return { lat: null, lon: null };
+}
+
+// === FIREBASE DATA LOADING ===
+// Cached Firebase data (loaded once on startup)
+window._fbCache = {
+  landfills: null,
+  additionalVents: null,
+  hiddenVents: null,
+  coordinates: null,
+  customNames: null,
+  customImages: null,
+  customMapsLinks: null,
+  customGPS: null,
+  measurements: null,
+  activityLog: null,
+  landfillImages: null,
+  loaded: false
+};
+
+async function loadAllFromFirebase() {
+  if (!window.firebaseDB) return false;
+  try {
+    const { doc, getDoc } = window.firebaseFunctions;
+    const db = window.firebaseDB;
+    const keys = ['landfills','additionalVents','hiddenVents','coordinates','customNames','customImages','customMapsLinks','customGPS','measurements','landfillImages'];
+    const results = await Promise.all(keys.map(k => getDoc(doc(db, 'mop_data', k))));
+    keys.forEach((k, i) => {
+      if (results[i].exists()) {
+        const data = results[i].data();
+        window._fbCache[k] = data;
+        localStorage.setItem(k, JSON.stringify(data.list !== undefined ? data.list : data));
+      }
+    });
+    // Restore base64 images into landfills cache
+    if (window._fbCache.landfills && window._fbCache.landfillImages) {
+      const imgs = window._fbCache.landfillImages;
+      const list = (window._fbCache.landfills.list || window._fbCache.landfills || []).map(l => {
+        if (l.image === '__base64__' && imgs[l.id]) return { ...l, image: imgs[l.id] };
+        return l;
+      });
+      window._fbCache.landfills = { list };
+      localStorage.setItem('landfills', JSON.stringify(list));
+    }
+    window._fbCache.loaded = true;
+    console.log('Firebase data loaded:', window._fbCache);
+    return true;
+  } catch(e) {
+    console.warn('Firebase load failed, using localStorage:', e);
+    return false;
+  }
+}
+
+function _getFromCache(key) {
+  const cache = window._fbCache[key];
+  if (cache !== null) {
+    // landfills stored as { list: [...] }
+    if (key === 'landfills') return cache.list || cache || [];
+    return cache;
+  }
+  // fallback to localStorage
+  const lsKey = key;
+  const raw = localStorage.getItem(lsKey);
+  if (!raw) return key === 'landfills' ? [] : {};
+  const parsed = JSON.parse(raw);
+  // localStorage landfills stored as array directly
+  return parsed;
+}
+
+function loadCustomLandfills() {
+  const customLandfills = _getFromCache('landfills');
+  const list = Array.isArray(customLandfills) ? customLandfills : [];
+  return list.map(custom => {
+    let coords = extractCoordinatesFromMapsLink(custom.mapsLink);
+    const lat = custom.lat || coords.lat || 45.8150;
+    const lon = custom.lon || coords.lon || 15.9819;
+    return {
+      id: custom.id,
+      name: custom.name,
+      image: custom.image,
+      lat: lat,
+      lon: lon,
+      mapsLink: custom.mapsLink || '',
+      client: custom.info?.contact || 'Custom landfill',
+      reportTitle: 'ISPITNI IZVJEŠTAJ - ' + custom.name,
+      info: custom.info || {}
+    };
+  });
+}
+
+function loadCustomVents() {
+  const customLandfills = _getFromCache('landfills');
+  const list = Array.isArray(customLandfills) ? customLandfills : [];
+  const additionalVents = _getFromCache('additionalVents');
+  const hiddenVents = _getFromCache('hiddenVents');
+  
+  console.log('=== loadCustomVents called ===');
+  console.log('Loading custom vents:', { list, additionalVents, hiddenVents });
+  
+  const vents = {};
+  list.forEach(custom => {
+    vents[custom.id] = custom.vents || [];
+  });
+  
+  console.log('Returning:', { customVents: vents, additionalVents, hiddenVents });
+  
+  // Return object that will be used to extend built-in vents
+  return { customVents: vents, additionalVents: additionalVents, hiddenVents: hiddenVents };
+}
+
+function mergeVents(builtInVents, customData) {
+  console.log('=== mergeVents called ===');
+  console.log('builtInVents:', builtInVents);
+  console.log('customData:', customData);
+  
+  const result = {...builtInVents};
+  
+  // Remove hidden vents from built-in landfills
+  Object.keys(customData.hiddenVents || {}).forEach(landfillId => {
+    const id = parseInt(landfillId);
+    if (result[id]) {
+      console.log(`Removing hidden vents from landfill ${id}:`, customData.hiddenVents[landfillId]);
+      result[id] = result[id].filter(v => !customData.hiddenVents[landfillId].includes(v));
+      console.log(`Result for landfill ${id} after hiding:`, result[id]);
+    }
+  });
+  
+  // Add additional vents to built-in landfills
+  Object.keys(customData.additionalVents).forEach(landfillId => {
+    const id = parseInt(landfillId);
+    if (result[id]) {
+      console.log(`Merging additional vents for landfill ${id}:`, customData.additionalVents[landfillId]);
+      result[id] = [...result[id], ...customData.additionalVents[landfillId]];
+      console.log(`Result for landfill ${id}:`, result[id]);
+    }
+  });
+  
+  // Add custom landfills
+  Object.keys(customData.customVents).forEach(landfillId => {
+    result[landfillId] = customData.customVents[landfillId];
+  });
+  
+  console.log('Final merged vents:', result);
+  return result;
+}
+
+function loadCustomCoordinates() {
+  const coords = _getFromCache('coordinates');
+  console.log('Loading custom coordinates:', coords);
+  return coords;
+}
+
+// --- Custom device dropdown ---
+const DEVICES = [
+  {
+    value: "Geotech GA5000",
+    label: "Geotech GA5000",
+    img: "slike/uredjaji/GA5000.jpg"
+  },
+  {
+    value: "MRU Optima Biogas",
+    label: "MRU Optima Biogas",
+    img: "slike/uredjaji/Optima-Biogas.png"
+  }
+];
+function renderDeviceDropdown() {
+  const dropdown = document.getElementById('device-dropdown');
+  dropdown.innerHTML = '';
+  let selected = null;
+  const hiddenInput = document.getElementById('device-select');
+  const prevValue = hiddenInput.value;
+  if (prevValue) selected = DEVICES.find(d => d.value === prevValue);
+  let selectedDevice = selected || null;
+  const selectedDiv = document.createElement('div');
+  selectedDiv.className = 'device-dropdown-selected';
+  selectedDiv.tabIndex = 0;
+  selectedDiv.innerHTML = `
+    ${selectedDevice ? `<img src="${selectedDevice.img}" alt="${selectedDevice.label}">` : ''}
+    <span>${selectedDevice ? selectedDevice.label : 'Odaberite uređaj'}</span>
+    <span class="device-dropdown-arrow">&#9662;</span>
+  `;
+  dropdown.appendChild(selectedDiv);
+  const list = document.createElement('div');
+  list.className = 'device-dropdown-list';
+  DEVICES.forEach(device => {
+    const opt = document.createElement('div');
+    opt.className = 'device-dropdown-option' + (selectedDevice && device.value === selectedDevice.value ? ' selected' : '');
+    opt.innerHTML = `<img src="${device.img}" alt="${device.label}"><span>${device.label}</span>`;
+    opt.addEventListener('click', function(e) {
+      e.stopPropagation();
+      selectedDiv.innerHTML = `<img src="${device.img}" alt="${device.label}"><span>${device.label}</span><span class="device-dropdown-arrow">&#9662;</span>`;
+      hiddenInput.value = device.value;
+      hiddenInput.dispatchEvent(new Event('change'));
+      list.classList.remove('open');
+      list.querySelectorAll('.device-dropdown-option').forEach(x=>x.classList.remove('selected'));
+      opt.classList.add('selected');
+    });
+    list.appendChild(opt);
+  });
+  dropdown.appendChild(list);
+  selectedDiv.addEventListener('click', function(e) {
+    e.stopPropagation();
+    list.classList.toggle('open');
+  });
+  selectedDiv.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      list.classList.toggle('open');
+    }
+  });
+  document.addEventListener('click', function(e) {
+    if (!dropdown.contains(e.target)) {
+      list.classList.remove('open');
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', function() {
+  renderDeviceDropdown();
+});
+
+// --- Ostatak aplikacije ---
+const MEASURERS = [
+  'Kristijan Liščinski',
+  'Sven Jambrušić',
+  'Gordan Golja',
+  'Luka Guštin',
+  'Tomislav Harambašić'
+];
+const BUILTIN_VENTS = {
+  1: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21"],
+  2: ["A1", "A2", "A4", "A6", "A7", "A8", "B3", "B5", "Z1", "Z2", "Z3", "Z4", "Z5", "Z6", "Z7", "Z8", "Z9", "Z10", "Z11", "Z12", "Z13", "Z14", "Z15", "Z16", "Z17", "Z18", "Z19"],
+  3: ["1-3", "2-2", "2-3", "2-4", "3-2", "3-3", "3-4", "4-2", "4-3", "4-4", "5-2", "5-3", "5-4", "6-2", "6-3", "6-4", "10-1", "10-2", "10-3", "10-4", "10-5", "9-1", "9-2", "9-3", "9-4", "9-5", "8-1", "8-2", "8-3", "8-4", "8-5"],
+  4: ["N1", "N2", "N3", "N4"],
+  5: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34"],
+  6: ["Z01", "Z02", "Z03", "Z04", "Z05", "Z06", "Z07", "Z08", "Z09", "Z10", "Z11", "Z12", "Z13", "Z14", "Z15", "Z16", "Z17", "Z18", "Z19", "Z20", "Z21"],
+  7: ["1", "2", "6", "7", "8", "9", "10"],
+  8: ["1", "2", "3", "4", "5", "6", "7", "8", "Z1", "Z2", "N01", "N02", "N03", "N04", "N05", "N06", "N07", "N08", "N09", "N10", "N11"],
+  9: ["BC29", "BC2", "BC30", "BC5", "BC23", "BC37", "BC9", "D2", "BC4", "BC28", "BC32", "BC33", "BC10", "BC15", "BC16", "BC14", "BC17", "BC34", "BC35", "BC36", "BC13", "BC18", "BC19", "BC11", "BC12", "BC38", "BC20", "BC21", "BC22"],
+  10: ["PB82", "PB83", "PB84", "PB85", "PB86", "PB87", "PB88", "PB89", "PB92", "PB93", "PB94", "PB95", "PB96", "PB97", "PB98", "PB100", "PB102", "PB103", "PB104", "PB105", "PB106", "PB108", "PB109", "PB110", "PB111", "PB114", "PB115"],
+  11: ["1", "2", "3", "4", "5"],
+  12: ["1", "2", "3", "4", "5", "6", "7"],
+  13: ["1", "2", "3", "4", "5"],
+  14: ["11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"],
+  15: ["1", "2", "3", "4", "5", "6", "7"],
+  16: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14"],
+  17: ["1", "2"],
+  18: ["B-2", "B-3", "B-4", "B-5", "B-6", "B-7", "B-8", "B-9", "B-11", "B-12", "B-13", "B-14", "B-15", "B-16", "B-17", "B-18", "B-19", "B-20", "B-21", "B-23", "B-25", "B-26", "B-27", "B-28"],
+  19: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "1N", "2N", "3N"],
+  20: ["Z01", "Z02", "Z03", "Z04", "Z05", "Z06"]
+};
+
+// Function to get vents dynamically (reloads from localStorage each time)
+function getVentsByLandfill() {
+  return mergeVents(BUILTIN_VENTS, loadCustomVents());
+}
+
+// Initialize VENTS_BY_LANDFILL
+let VENTS_BY_LANDFILL = getVentsByLandfill(); window.VENTS_BY_LANDFILL = VENTS_BY_LANDFILL;
+const LANDFILLS = [
+  { id: 1, name: 'Odlagalište otpada Križevci', image: 'slike/odlagalista/Krizevci.jpg', lat: 46.0219, lon: 16.5425, mapsLink: '', 
+    client: 'Čistoća Križevci d.o.o., Ulica Ivana Gorana Kovačića 1, 48260 Križevci',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Čistoća Križevci d.o.o., Križevci' },
+  { id: 2, name: 'Odlagalište otpada Koprivnica', image: 'slike/odlagalista/Koprivnica.jpg', lat: 46.1636, lon: 16.8297, mapsLink: '',
+    client: 'Komunalac Koprivnica d.o.o., Ulica Antuna Nemčića 5, 48000 Koprivnica',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Komunalac Koprivnica d.o.o., Koprivnica' },
+  { id: 3, name: 'Odlagalište otpada Virovitica', image: 'slike/odlagalista/Virovitica.jpg', lat: 45.8319, lon: 17.3836, mapsLink: '',
+    client: 'Čistoća Virovitica d.o.o., Ulica Matije Gupca 78, 33000 Virovitica',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Čistoća Virovitica d.o.o., Virovitica' },
+  { id: 4, name: 'Odlagalište otpada Grubišno Polje', image: 'slike/odlagalista/Grubisno-Polje.jpg', lat: 45.6989, lon: 17.1753, mapsLink: '',
+    client: 'Komunalac d.o.o. Grubišno Polje, Ivana Nepomuka Jemeršića 37c, 43290 Grubišno Polje',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Komunalac d.o.o. Grubišno Polje, Prdavac - Grubišno Polje' },
+  { id: 5, name: 'Odlagalište otpada Belišće', image: 'slike/odlagalista/Belisce.jpg', lat: 45.6806, lon: 18.4042, mapsLink: '',
+    client: 'Belišće Komunalac d.o.o., Trg Josipa Runjanina 1, 31551 Belišće',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Belišće Komunalac d.o.o., Belišće' },
+  { id: 6, name: 'Odlagalište otpada Beli Manastir', image: 'slike/odlagalista/Beli-Manastir.jpg', lat: 45.7697, lon: 18.6042, mapsLink: '',
+    client: 'Komunalac Beli Manastir d.o.o., Ulica Josipa Jelačića 10, 31300 Beli Manastir',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Komunalac Beli Manastir d.o.o., Beli Manastir' },
+  { id: 7, name: 'Odlagalište otpada Pag', image: 'slike/odlagalista/Pag.jpg', lat: 44.4450, lon: 15.0597, mapsLink: '',
+    client: 'Vodovod Pag d.o.o., Ulica Jurja Dalmatinca 1, 23250 Pag',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Vodovod Pag d.o.o., Pag' },
+  { id: 8, name: 'Odlagalište otpada Otočac', image: 'slike/odlagalista/Otocac.jpg', lat: 44.8697, lon: 15.2378, mapsLink: '',
+    client: 'Komunalac Otočac d.o.o., Ulica Vladimira Nazora 4, 53220 Otočac',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Komunalac Otočac d.o.o., Otočac' },
+  { id: 9, name: 'Odlagalište otpada Zadar - Diklo', image: 'slike/odlagalista/Zadar.jpg', lat: 44.1194, lon: 15.2314, mapsLink: '',
+    client: 'Čistoća Zadar d.o.o., Ulica Bože Peričića 5, 23000 Zadar',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Čistoća Zadar d.o.o., Zadar - Diklo' },
+  { id: 10, name: 'Odlagalište otpada Split - Karepovac', image: 'slike/odlagalista/Karepovac.jpg', lat: 43.5081, lon: 16.4402, mapsLink: '',
+    client: 'Čistoća Split d.o.o., Ulica Domovinskog rata 49, 21000 Split',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Čistoća Split d.o.o., Split - Karepovac' },
+  { id: 11, name: 'Odlagalište otpada Knin - Mala Promina', image: 'slike/odlagalista/Knin.jpg', lat: 44.0406, lon: 16.1966, mapsLink: '',
+    client: 'Vodovod Knin d.o.o., Ulica Ante Starčevića 2, 22300 Knin',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Vodovod Knin d.o.o., Knin - Mala Promina' },
+  { id: 12, name: 'Odlagalište otpada Kljakovača - Obrovac', image: 'slike/odlagalista/Obrovac.jpg', lat: 44.2036, lon: 15.6772, mapsLink: '',
+    client: 'Komunalac Obrovac d.o.o., Ulica Stjepana Radića 1, 23450 Obrovac',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Komunalac Obrovac d.o.o., Kljakovača - Obrovac' },
+  { id: 13, name: 'Odlagalište otpada Cere - Labin', image: 'slike/odlagalista/Labin.jpg', lat: 45.0931, lon: 14.1197, mapsLink: '',
+    client: 'Komunalac Labin d.o.o., Ulica Rudarska 1, 52220 Labin',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Komunalac Labin d.o.o., Cere - Labin' },
+  { id: 14, name: 'Odlagalište otpada Novi Dvori - Zaprešić', image: 'slike/odlagalista/Zapresic.jpg', lat: 45.8564, lon: 15.8072, mapsLink: '',
+    client: 'Čistoća Zaprešić d.o.o., Ulica Matije Gupca 68, 10290 Zaprešić',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Čistoća Zaprešić d.o.o., Novi Dvori - Zaprešić' },
+  { id: 15, name: 'Odlagalište otpada Griža - Buzet', image: 'slike/odlagalista/Griza.jpg', lat: 45.4094, lon: 13.9667, mapsLink: '',
+    client: 'Komunalac Buzet d.o.o., Ulica Fontana 6, 52420 Buzet',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Komunalac Buzet d.o.o., Griža - Buzet' },
+  { id: 16, name: 'Odlagalište otpada Pržić - Cres', image: 'slike/odlagalista/Cres.jpg', lat: 44.9611, lon: 14.4084, mapsLink: '',
+    client: 'Vodovod Cres d.o.o., Ulica Creskih kapetana 1, 51557 Cres',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Vodovod Cres d.o.o., Pržić - Cres' },
+  { id: 17, name: 'Odlagalište otpada Bedekovčina', image: 'slike/odlagalista/Bedekovcina.jpg', lat: 46.0403, lon: 15.9942, mapsLink: '',
+    client: 'Komunalac Bedekovčina d.o.o., Ulica Trg Eugena Kvaternika 10, 49221 Bedekovčina',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Komunalac Bedekovčina d.o.o., Bedekovčina' },
+  { id: 18, name: 'Odlagalište otpada Basilica - Rovinj', image: 'slike/odlagalista/Rovinj.jpg', lat: 45.0808, lon: 13.6386, mapsLink: '',
+    client: 'Komunalac Rovinj d.o.o., Ulica Carrera 1, 52210 Rovinj',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Komunalac Rovinj d.o.o., Basilica - Rovinj' },
+  { id: 19, name: 'Odlagalište otpada Jelenčići V - Pazin', image: 'slike/odlagalista/Pazin.jpg', lat: 45.2397, lon: 13.9364, mapsLink: '',
+    client: 'Komunalac Pazin d.o.o., Ulica Vladimira Nazora 6, 52000 Pazin',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Komunalac Pazin d.o.o., Jelenčići V - Pazin' },
+  { id: 20, name: 'Odlagalište otpada Biljane Donje', image: 'slike/odlagalista/Biljane-Donje.jpg', lat: 45.4833, lon: 16.9167, mapsLink: '',
+    client: 'Komunalac Biljane Donje d.o.o., Ulica Biljane Donje 1, 43000 Bjelovar',
+    reportTitle: 'ISPITNI IZVJEŠTAJ O MJERENJU EMISIJA ODLAGALIŠNIH PLINOVA NA ODLAGALIŠTU KOMUNALNOG OTPADA – Komunalac Biljane Donje d.o.o., Biljane Donje' },
+  ...loadCustomLandfills()
+];
+
+// Apply custom names and images to built-in landfills
+function applyCustomLandfillData() {
+  const customNames = _getFromCache('customNames');
+  const customImages = _getFromCache('customImages');
+  const customMapsLinks = _getFromCache('customMapsLinks');
+  const customGPS = _getFromCache('customGPS');
+  
+  console.log('Applying custom names, images, maps links and GPS:', { customNames, customImages, customMapsLinks, customGPS });
+  
+  LANDFILLS.forEach(landfill => {
+    if (customNames[landfill.id]) {
+      console.log(`Applying custom name to landfill ${landfill.id}: ${customNames[landfill.id]}`);
+      landfill.name = customNames[landfill.id];
+    }
+    if (customImages[landfill.id]) {
+      console.log(`Applying custom image to landfill ${landfill.id}: ${customImages[landfill.id]}`);
+      landfill.image = customImages[landfill.id];
+    }
+    if (customMapsLinks[landfill.id]) {
+      console.log(`Applying custom maps link to landfill ${landfill.id}: ${customMapsLinks[landfill.id]}`);
+      landfill.mapsLink = customMapsLinks[landfill.id];
+      
+      // Extract coordinates from maps link
+      const coords = extractCoordinatesFromMapsLink(customMapsLinks[landfill.id]);
+      if (coords.lat && coords.lon) {
+        console.log(`Extracted coordinates from maps link for landfill ${landfill.id}:`, coords);
+        landfill.lat = coords.lat;
+        landfill.lon = coords.lon;
+      }
+    }
+    // Apply custom GPS if explicitly set (overrides extracted coordinates)
+    if (customGPS[landfill.id]) {
+      console.log(`Applying custom GPS to landfill ${landfill.id}:`, customGPS[landfill.id]);
+      landfill.lat = customGPS[landfill.id].lat;
+      landfill.lon = customGPS[landfill.id].lon;
+    }
+  });
+}
+
+// Apply custom data on page load - will be called after Firebase loads
+// (called synchronously first with localStorage, then refreshed after Firebase)
+applyCustomLandfillData();
+
+const state = {
+  selectedLandfill: null,
+  currentMeasurer: "",
+  currentDevice: "",
+  currentMeasurement: {
+    measurer: '',
+    device: '',
+    landfill: null,
+    date: new Date().toISOString().split('T')[0],
+    airTemp: '',
+    airPressure: '',
+    windDirection: '',
+    windSpeed: '',
+    
+    startTime: '',
+    vents: []
+  },
+  editingIndex: -1,
+  editingVentIndex: -1
+};
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+  document.getElementById(id).style.display = 'block';
+}
+function clearMeasurementForm() {
+  document.getElementById('measurement-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('start-hour').value = '';
+  document.getElementById('start-minute').value = '';
+  document.getElementById('air-temp').value = '';
+  document.getElementById('air-pressure').value = '';
+  document.getElementById('wind-direction').value = '';
+  document.getElementById('wind-speed').value = '';
+}
+function resetToLogin() {
+  state.currentMeasurer = "";
+  state.currentDevice = "";
+  state.selectedLandfill = null;
+  state.editingIndex = -1;
+  state.editingVentIndex = -1;
+  state.currentMeasurement = {
+    measurer: '',
+    device: '',
+    landfill: null,
+    date: new Date().toISOString().split('T')[0],
+    airTemp: '',
+    airPressure: '',
+    windDirection: '',
+    windSpeed: '',
+    
+    startTime: '',
+    vents: []
+  };
+  localStorage.removeItem('tempMeasurement');
+  clearMeasurementForm();
+  showScreen('login-screen');
+}
+
+function safeResetToLogin() {
+  if (state.currentMeasurement.landfill) {
+    if (confirm("Jeste li sigurni da želite napustiti unos? Neće biti spremljeno.")) {
+      resetToLogin();
+    }
+  } else {
+    resetToLogin();
+  }
+}
+
+function initLandfillGrid() {
+  const grid = document.getElementById('landfill-grid');
+  grid.innerHTML = '';
+  state.selectedLandfill = null;
+
+  // Show skeleton loaders first
+  for (let i = 0; i < 6; i++) {
+    const sk = document.createElement('div');
+    sk.className = 'skeleton-card';
+    sk.innerHTML = `<div class="skeleton-img"></div><div class="skeleton-line" style="width:80%;"></div><div class="skeleton-line" style="width:50%;"></div>`;
+    grid.appendChild(sk);
+  }
+
+  // Get last measurement dates per landfill
+  const measurements = loadMeasurements();
+  const lastMeasurementByLandfill = {};
+  measurements.forEach(m => {
+    const id = m.landfill?.id;
+    if (!id) return;
+    if (!lastMeasurementByLandfill[id] || m.date > lastMeasurementByLandfill[id]) {
+      lastMeasurementByLandfill[id] = m.date;
+    }
+  });
+
+  // Render real cards after short delay (feels smoother)
+  setTimeout(() => {
+    grid.innerHTML = '';
+    LANDFILLS.forEach(landfill => {
+      const card = document.createElement('div');
+      card.className = 'landfill-card';
+      const lastDate = lastMeasurementByLandfill[landfill.id];
+      const lastDateStr = lastDate
+        ? `📅 Zadnje: ${lastDate.split('-').reverse().join('.')}`
+        : '📅 Još nije mjereno';
+      card.innerHTML = `
+        <img src="${landfill.image}" alt="${landfill.name}">
+        <h3>${landfill.name}</h3>
+        <span class="last-measurement-badge">${lastDateStr}</span>
+        <button class="navigate-btn" onclick="navigateToLandfill('${landfill.mapsLink}', '${landfill.name.replace(/'/g, "\\'")}'); event.stopPropagation();" style="margin-top:10px;padding:8px 12px;background:#4285f4;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;width:100%;">
+          🗺️ Navigiraj
+        </button>
+      `;
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.landfill-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        state.selectedLandfill = landfill;
+        // Scroll do gumba Nastavi
+        setTimeout(function() {
+          var btn = document.getElementById('template-landfill-next');
+          if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      });
+      grid.appendChild(card);
+    });
+  }, 400);
+}
+
+function navigateToLandfill(mapsLink, name) {
+  // Provjeri ima li link
+  if (!mapsLink || mapsLink.trim() === '') {
+    alert('Google Maps link za ovo odlagalište nije postavljen.');
+    return;
+  }
+  
+  // Otvori link u novom tabu/prozoru
+  window.open(mapsLink, '_blank');
+}
+
+function showVentForm() {
+  openVentSelectModal();
+}
+function openVentSelectModal() {
+  const modal = document.getElementById('vent-select-modal');
+  const dropdown = document.getElementById('vent-select-dropdown');
+  dropdown.innerHTML = '<option value="">Odaberi odušnik</option>';
+  let ventNames = [];
+  if (state.selectedLandfill && VENTS_BY_LANDFILL[state.selectedLandfill.id]) {
+    ventNames = VENTS_BY_LANDFILL[state.selectedLandfill.id];
+  }
+  const usedVents = state.currentMeasurement.vents.map(v => v.name);
+  ventNames.filter(name => !usedVents.includes(name)).forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    dropdown.appendChild(opt);
+  });
+  modal.style.display = 'flex';
+}
+function closeVentSelectModal() {
+  document.getElementById('vent-select-modal').style.display = 'none';
+}
+function openManualVentModal() {
+  document.getElementById('manual-vent-input').value = '';
+  document.getElementById('manual-vent-modal').style.display = 'flex';
+}
+function closeManualVentModal() {
+  document.getElementById('manual-vent-modal').style.display = 'none';
+}
+function openSuccessModal() {
+  document.getElementById('success-modal').style.display = 'flex';
+}
+function closeSuccessModal() {
+  document.getElementById('success-modal').style.display = 'none';
+  resetToLogin();
+}
+
+// Funkcija za dohvaćanje vremenskih podataka s Open-Meteo API
+async function fetchWeatherData(lat, lon) {
+  try {
+    const url = 'https://wttr.in/' + lat + ',' + lon + '?format=j1';
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const data = await response.json();
+    const cur = data.current_condition[0];
+    const windDeg = parseInt(cur.winddirDegree);
+    return {
+      temperature: parseFloat(cur.temp_C).toFixed(1),
+      pressure: parseFloat(cur.pressure).toFixed(1),
+      windSpeed: (parseFloat(cur.windspeedKmph) / 3.6).toFixed(1),
+      windDirection: getWindDirection(windDeg)
+    };
+  } catch (error) {
+    console.error('Weather error:', error);
+    return null;
+  }
+}
+
+// Funkcija za pretvaranje stupnjeva u smjer vjetra
+function getWindDirection(degrees) {
+  const directions = ['S', 'SSI', 'SI', 'ISI', 'I', 'IJI', 'JI', 'JJI', 'J', 'JJZ', 'JZ', 'ZJZ', 'Z', 'ZSZ', 'SZ', 'SSZ'];
+  const index = Math.round(degrees / 22.5) % 16;
+  return directions[index];
+}
+
+// Funkcija za automatsko formatiranje decimala za CH4, CO2, O2
+function autoFormatDecimal(inputElement, nextInputId, maxDecimals) {
+  maxDecimals = maxDecimals || 2; // Default 2 decimale
+  
+  // Ukloni stare event listenere ako postoje
+  const newInput = inputElement.cloneNode(true);
+  inputElement.parentNode.replaceChild(newInput, inputElement);
+  inputElement = newInput;
+  
+  inputElement.addEventListener('input', function(e) {
+    let value = this.value;
+    const oldValue = value;
+    
+    // Zamijeni zarez s točkom
+    if (value.includes(',')) {
+      value = value.replace(',', '.');
+    }
+    
+    // Ako ima točku
+    if (value.includes('.')) {
+      // Split po točki
+      const dotIndex = value.indexOf('.');
+      let beforeDot = value.substring(0, dotIndex);
+      let afterDot = value.substring(dotIndex + 1);
+      
+      // Očisti sve osim brojeva
+      beforeDot = beforeDot.replace(/[^\d]/g, '');
+      afterDot = afterDot.replace(/[^\d.]/g, '').replace(/\./g, ''); // Ukloni dodatne točke
+      
+      // Ograniči
+      beforeDot = beforeDot.slice(0, 2);
+      afterDot = afterDot.slice(0, maxDecimals);
+      
+      // Postavi vrijednost SAMO ako je različita
+      const newValue = beforeDot + '.' + afterDot;
+      if (newValue !== oldValue) {
+        this.value = newValue;
+      }
+      
+      // Ako ima potreban broj decimala, pređi na sljedeće polje
+      if (afterDot.length >= maxDecimals && nextInputId) {
+        setTimeout(() => {
+          const nextInput = document.getElementById(nextInputId);
+          if (nextInput) nextInput.focus();
+        }, 50);
+      }
+      return;
+    }
+    
+    // Ako nema točku - samo brojevi
+    value = value.replace(/[^\d]/g, '');
+    
+    if (value.length === 0) {
+      if (this.value !== '') {
+        this.value = '';
+      }
+      return;
+    }
+    
+    // Ograniči na 4 znamenke (ili 3 za 1 decimalu)
+    const maxDigits = 2 + maxDecimals;
+    if (value.length > maxDigits) {
+      value = value.slice(0, maxDigits);
+    }
+    
+    // Ako ima dovoljno znamenki, automatski formatiraj
+    if (value.length === maxDigits) {
+      const formatted = value.slice(0, -maxDecimals) + '.' + value.slice(-maxDecimals);
+      
+      if (parseFloat(formatted) > 99.99) {
+        this.value = '99.99';
+      } else {
+        this.value = formatted;
+      }
+      
+      if (nextInputId) {
+        setTimeout(() => {
+          const nextInput = document.getElementById(nextInputId);
+          if (nextInput) nextInput.focus();
+        }, 50);
+      }
+    } else {
+      if (this.value !== value) {
+        this.value = value;
+      }
+    }
+  });
+  
+  inputElement.addEventListener('blur', function() {
+    if (parseFloat(this.value) > 99.99) {
+      this.value = '99.99';
+    }
+  });
+  
+  return inputElement;
+}
+
+// Funkcija za formatiranje cijelog broja (H2, H2S)
+function autoFormatInteger(inputElement) {
+  // Ukloni stare event listenere ako postoje
+  const newInput = inputElement.cloneNode(true);
+  inputElement.parentNode.replaceChild(newInput, inputElement);
+  inputElement = newInput;
+  
+  inputElement.addEventListener('input', function(e) {
+    let value = this.value;
+    
+    // Samo brojevi, bez decimala
+    value = value.replace(/[^\d]/g, '');
+    
+    if (this.value !== value) {
+      this.value = value;
+    }
+  });
+  
+  return inputElement;
+}
+
+// Funkcija za formatiranje temperature (1 decimala)
+function autoFormatTemperature(inputElement) {
+  // Ukloni stare event listenere ako postoje
+  const newInput = inputElement.cloneNode(true);
+  inputElement.parentNode.replaceChild(newInput, inputElement);
+  inputElement = newInput;
+  
+  inputElement.addEventListener('input', function(e) {
+    let value = this.value;
+    const oldValue = value;
+    
+    // Zamijeni zarez s točkom
+    if (value.includes(',')) {
+      value = value.replace(',', '.');
+    }
+    
+    // Ako ima točku
+    if (value.includes('.')) {
+      const dotIndex = value.indexOf('.');
+      let beforeDot = value.substring(0, dotIndex);
+      let afterDot = value.substring(dotIndex + 1);
+      
+      // Očisti sve osim brojeva
+      beforeDot = beforeDot.replace(/[^\d]/g, '');
+      afterDot = afterDot.replace(/[^\d.]/g, '').replace(/\./g, '');
+      
+      // Ograniči na 1 decimalu
+      afterDot = afterDot.slice(0, 1);
+      
+      const newValue = beforeDot + '.' + afterDot;
+      if (newValue !== oldValue) {
+        this.value = newValue;
+      }
+      return;
+    }
+    
+    // Ako nema točku - samo brojevi
+    value = value.replace(/[^\d]/g, '');
+    
+    if (this.value !== value) {
+      this.value = value;
+    }
+  });
+  
+  return inputElement;
+}
+
+// Funkcija za primjenu auto-formatiranja na sva polja
+function applyAutoFormatting() {
+  const ch4Input = document.getElementById('ch4');
+  const co2Input = document.getElementById('co2');
+  const o2Input = document.getElementById('o2');
+  const h2Input = document.getElementById('h2');
+  const h2sInput = document.getElementById('h2s');
+  const tempInput = document.getElementById('vent-temp');
+  
+  if (!ch4Input || !co2Input || !o2Input) return;
+  
+  // Provjeri koji je uređaj odabran
+  const isMRU = state.currentDevice === 'MRU Optima Biogas';
+  const decimals = isMRU ? 2 : 1; // MRU Optima = 2 decimale, GA5000 = 1 decimala
+  
+  // Primijeni formatiranje na CH4, CO2, O2
+  autoFormatDecimal(ch4Input, 'co2', decimals);
+  autoFormatDecimal(co2Input, 'o2', decimals);
+  autoFormatDecimal(o2Input, 'h2', decimals);
+  
+  // H2 i H2S - samo cijeli brojevi
+  if (h2Input) autoFormatInteger(h2Input);
+  if (h2sInput) autoFormatInteger(h2sInput);
+  
+  // Temperatura - 1 decimala za oba uređaja
+  if (tempInput) autoFormatTemperature(tempInput);
+}
+
+// Funkcija za postavljanje trenutnog vremena
+function setCurrentTime() {
+  const now = new Date();
+  const hour = now.getHours().toString().padStart(2, '0');
+  const minute = Math.floor(now.getMinutes() / 5) * 5; // Zaokruži na najbližih 5 minuta
+  const minuteStr = minute.toString().padStart(2, '0');
+  
+  document.getElementById('start-hour').value = hour;
+  document.getElementById('start-minute').value = minuteStr;
+}
+
+// Funkcija za automatsko popunjavanje vremenskih podataka
+async function autoFillWeatherData() {
+  if (!state.selectedLandfill) return;
+  
+  // Postavi trenutno vrijeme
+  setCurrentTime();
+  
+  // Prikaži loading poruku
+  const airTempInput = document.getElementById('air-temp');
+  const airPressureInput = document.getElementById('air-pressure');
+  const windDirectionInput = document.getElementById('wind-direction');
+  const windSpeedInput = document.getElementById('wind-speed');
+  
+  airTempInput.placeholder = 'Učitavanje...';
+  airPressureInput.placeholder = 'Učitavanje...';
+  windDirectionInput.placeholder = 'Učitavanje...';
+  windSpeedInput.placeholder = 'Učitavanje...';
+  
+  // Dohvati vremenske podatke
+  const weatherData = await fetchWeatherData(state.selectedLandfill.lat, state.selectedLandfill.lon);
+  
+  if (weatherData) {
+    airTempInput.value = weatherData.temperature;
+    airPressureInput.value = weatherData.pressure;
+    windDirectionInput.value = weatherData.windDirection;
+    windSpeedInput.value = weatherData.windSpeed;
+    
+    // Resetiraj placeholdere
+    airTempInput.placeholder = '';
+    airPressureInput.placeholder = '';
+    windDirectionInput.placeholder = '';
+    windSpeedInput.placeholder = '';
+  } else {
+    alert('Nije moguće dohvatiti vremenske podatke. Molimo unesite ručno.');
+    airTempInput.placeholder = '';
+    airPressureInput.placeholder = '';
+    windDirectionInput.placeholder = '';
+    windSpeedInput.placeholder = '';
+  }
+}
+
+function editVent(index) {
+  const vent = state.currentMeasurement.vents[index];
+  if (!vent) return;
+  state.editingVentIndex = index;
+  document.getElementById('vent-index').value = index;
+  document.getElementById('vent-name').value = vent.name;
+  document.getElementById('ch4').value = vent.ch4 || '';
+  document.getElementById('co2').value = vent.co2 || '';
+  document.getElementById('o2').value = vent.o2 || '';
+  document.getElementById('h2').value = vent.h2 || '';
+  document.getElementById('h2s').value = vent.h2s || '';
+  document.getElementById('vent-temp').value = vent.temp || '';
+  document.getElementById('vent-diameter').value = vent.diameter || '';
+  document.querySelector(`input[name="vent-status"][value="${vent.status}"]`).checked = true;
+  document.getElementById('vent-note').value = vent.note || '';
+  document.getElementById('vent-form').style.display = 'block';
+  updateInputSteps();
+  setTimeout(function(){ var f = document.getElementById('vent-form'); if(f) f.scrollIntoView({behavior:'smooth', block:'start'}); }, 80);
+  
+  // Load previous measurement for comparison
+  loadPreviousMeasurement(vent.name);
+  
+  // Omogući/onemogući polja ovisno o statusu
+  toggleVentFields();
+}
+
+function updateInputSteps() {
+  // Postavi step atribute ovisno o uređaju
+  const isMRU = state.currentDevice === 'MRU Optima Biogas';
+  
+  document.getElementById('ch4').step = isMRU ? '0.01' : '0.1';
+  document.getElementById('co2').step = isMRU ? '0.01' : '0.1';
+  document.getElementById('o2').step = isMRU ? '0.01' : '0.1';
+  document.getElementById('h2').step = '1';
+  document.getElementById('h2s').step = '1';
+  document.getElementById('vent-temp').step = '0.1';
+  
+  // Primijeni auto-formatiranje
+  applyAutoFormatting();
+}
+
+function deleteVent(index) {
+  if (!confirm("Jeste li sigurni da želite obrisati ovaj odušnik?")) return;
+  state.currentMeasurement.vents.splice(index, 1);
+  localStorage.setItem('tempMeasurement', JSON.stringify(state.currentMeasurement));
+  updateVentTable();
+  updateMissingVentsWarning();
+}
+
+function toggleVentFields() {
+  const status = document.querySelector('input[name="vent-status"]:checked').value;
+  const fields = ['ch4', 'co2', 'o2', 'h2', 'h2s', 'vent-temp'];
+  
+  // Sva polja su uvijek omogućena, ali validacija ovisi o statusu
+  fields.forEach(id => {
+    document.getElementById(id).required = false;
+    document.getElementById(id).disabled = false;
+  });
+}
+function saveVentData() {
+  const name = document.getElementById('vent-name').value.trim();
+  if (!name) {
+    alert("Naziv odušnika je obavezan!");
+    return;
+  }
+  
+  const status = document.querySelector('input[name="vent-status"]:checked').value;
+  const ch4 = document.getElementById('ch4').value.trim();
+  const co2 = document.getElementById('co2').value.trim();
+  const o2 = document.getElementById('o2').value.trim();
+  const h2 = document.getElementById('h2').value.trim();
+  const h2s = document.getElementById('h2s').value.trim();
+  const temp = document.getElementById('vent-temp').value.trim();
+  
+  // Ako je status "Izmjeren", sva polja moraju biti popunjena
+  if (status === 'measured') {
+    if (!ch4) {
+      alert("Morate unijeti CH₄!");
+      return;
+    }
+    if (!co2) {
+      alert("Morate unijeti CO₂!");
+      return;
+    }
+    if (!o2) {
+      alert("Morate unijeti O₂!");
+      return;
+    }
+    if (!h2) {
+      alert("Morate unijeti H₂!");
+      return;
+    }
+    if (!h2s) {
+      alert("Morate unijeti H₂S!");
+      return;
+    }
+    if (!temp) {
+      alert("Morate unijeti temperaturu odušnika!");
+      return;
+    }
+  }
+  
+  // Validacija decimala samo ako su polja popunjena
+  const isMRU = state.currentDevice === 'MRU Optima Biogas';
+  const gasDecimals = isMRU ? 2 : 1; // MRU: 2 decimale, GA5000: 1 decimala
+  const gasPattern = isMRU ? /^\d+\.\d{2}$/ : /^\d+\.\d{1}$/;
+  const gasExample = isMRU ? '45.50' : '45.5';
+  
+  if (ch4) {
+    if (!gasPattern.test(ch4)) {
+      alert(`CH₄ mora imati točno ${gasDecimals} ${gasDecimals === 1 ? 'decimalu' : 'decimale'} (npr. ${gasExample})!`);
+      return;
+    }
+  }
+  if (co2) {
+    if (!gasPattern.test(co2)) {
+      alert(`CO₂ mora imati točno ${gasDecimals} ${gasDecimals === 1 ? 'decimalu' : 'decimale'} (npr. ${gasExample})!`);
+      return;
+    }
+  }
+  if (o2) {
+    if (!gasPattern.test(o2)) {
+      alert(`O₂ mora imati točno ${gasDecimals} ${gasDecimals === 1 ? 'decimalu' : 'decimale'} (npr. ${gasExample})!`);
+      return;
+    }
+  }
+  
+  // Validacija za H2 i H2S (bez decimala)
+  if (h2 && !/^\d+$/.test(h2)) {
+    alert("H₂ mora biti cijeli broj bez decimala!");
+    return;
+  }
+  if (h2s && !/^\d+$/.test(h2s)) {
+    alert("H₂S mora biti cijeli broj bez decimala!");
+    return;
+  }
+  
+  // Validacija za temperaturu (1 decimala)
+  if (temp) {
+    if (!/^\d+\.\d{1}$/.test(temp)) {
+      alert("Temperatura mora imati točno 1 decimalu (npr. 25.5)!");
+      return;
+    }
+  }
+  
+  const ventData = {
+    name: name,
+    ch4: ch4,
+    co2: co2,
+    o2: o2,
+    h2: h2,
+    h2s: h2s,
+    temp: temp,
+    diameter: document.getElementById('vent-diameter').value.trim(),
+    status: status,
+    note: document.getElementById('vent-note').value
+  };
+  if (state.editingVentIndex >= 0) {
+    state.currentMeasurement.vents[state.editingVentIndex] = ventData;
+  } else {
+    state.currentMeasurement.vents.push(ventData);
+  }
+  
+  // Spremi u privremenu pohranu
+  localStorage.setItem('tempMeasurement', JSON.stringify(state.currentMeasurement));
+  
+  updateVentTable();
+  updateMissingVentsWarning();
+  document.getElementById('vent-form').style.display = 'none';
+  document.getElementById('vent-form').reset();
+  state.editingVentIndex = -1;
+}
+function updateVentTable() {
+  const tbody = document.getElementById('vent-list');
+  tbody.innerHTML = '';
+  state.currentMeasurement.vents.forEach((vent, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${vent.name}</td>
+      <td>${vent.ch4 || ''}</td>
+      <td>${vent.co2 || ''}</td>
+      <td>${vent.o2 || ''}</td>
+      <td>${vent.h2 || ''}</td>
+      <td>${vent.h2s || ''}</td>
+      <td>${vent.temp || ''}</td>
+      <td style="font-size:12px;">${vent.status === 'measured' ? 'Izmjeren' : 'Ne može se izmjeriti'}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${vent.note || ''}</td>
+      <td style="padding:4px;">
+        <button style="padding:4px 8px;font-size:12px;width:100%;margin-bottom:4px;" onclick="editVent(${idx})">Uredi</button>
+        <button style="padding:4px 8px;font-size:12px;width:100%;background:#e74c3c;" onclick="deleteVent(${idx})">Obriši</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  
+  // Update map markers
+  updateMapMarkers();
+}
+function updateMissingVentsWarning() {
+  const warningDiv = document.getElementById('missing-vents-warning');
+  if (!state.selectedLandfill || !VENTS_BY_LANDFILL[state.selectedLandfill.id]) {
+    warningDiv.style.display = 'none';
+    return;
+  }
+  const allVents = VENTS_BY_LANDFILL[state.selectedLandfill.id];
+  const measuredVents = state.currentMeasurement.vents.map(v => v.name);
+  const missing = allVents.filter(v => !measuredVents.includes(v));
+  if (missing.length === 0) {
+    warningDiv.style.display = 'none';
+  } else {
+    warningDiv.textContent = `Niste unijeli sljedeće odusnike: ${missing.join(', ')}`;
+    warningDiv.style.display = 'block';
+  }
+}
+function finishMeasurement() {
+  if (state.currentMeasurement.vents.length === 0) {
+    alert("Morate unijeti barem jedan odušnik!");
+    return;
+  }
+  
+  // Provjera da li su svi odušnici uneseni
+  if (state.selectedLandfill && VENTS_BY_LANDFILL[state.selectedLandfill.id]) {
+    const allVents = VENTS_BY_LANDFILL[state.selectedLandfill.id];
+    const measuredVents = state.currentMeasurement.vents.map(v => v.name);
+    const missing = allVents.filter(v => !measuredVents.includes(v));
+    
+    if (missing.length > 0) {
+      const confirmMsg = `Niste unijeli sljedeće odušnike: ${missing.join(', ')}\n\nŽelite li ipak završiti mjerenje?`;
+      if (!confirm(confirmMsg)) {
+        return;
+      }
+    }
+  }
+  
+  // Dodaj vrijeme završetka
+  const now = new Date();
+  const hour = now.getHours().toString().padStart(2, '0');
+  const minute = now.getMinutes().toString().padStart(2, '0');
+  state.currentMeasurement.endTime = `${hour}:${minute}`;
+  
+  const measurements = loadMeasurements();
+  if (state.editingIndex >= 0) {
+    measurements[state.editingIndex] = state.currentMeasurement;
+  } else {
+    measurements.push(state.currentMeasurement);
+  }
+  saveMeasurements(measurements);
+  
+  // Ukloni privremeno spremljeno mjerenje nakon što je završeno
+  localStorage.removeItem('tempMeasurement');
+  
+  // Spremi index za export
+  const measurementIndex = state.editingIndex >= 0 ? state.editingIndex : measurements.length - 1;
+  
+  // Automatski exportaj u Excel
+  exportToExcel(measurementIndex);
+  
+  // Prikaži success modal
+  openSuccessModal();
+}
+function loadMeasurements() {
+  // Use Firebase cache if available (loaded at startup)
+  if (window._fbCache && window._fbCache.measurements !== null) {
+    const data = window._fbCache.measurements;
+    const fbList = data.list || data || [];
+    // Merge with localStorage to ensure locally saved measurements are included
+    const local = JSON.parse(localStorage.getItem('measurements') || '[]');
+    if (local.length > fbList.length) return local;
+    return fbList;
+  }
+  return JSON.parse(localStorage.getItem('measurements') || '[]');
+}
+function saveMeasurements(arr) {
+  localStorage.setItem('measurements', JSON.stringify(arr));
+  // Update local cache
+  if (window._fbCache) window._fbCache.measurements = { list: arr };
+  // Vibrate on save (mobile)
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+  // Save to Firebase async (no await - fire and forget)
+  _saveMeasurementsToFirebase(arr);
+}
+async function _saveMeasurementsToFirebase(arr) {
+  if (!window.firebaseDB) {
+    _markPendingSync();
+    return;
+  }
+  if (!navigator.onLine) {
+    _markPendingSync();
+    console.warn('Offline - mjerenje spremljeno lokalno, sync na čekanju.');
+    return;
+  }
+  try {
+    const { doc, setDoc } = window.firebaseFunctions;
+    await setDoc(doc(window.firebaseDB, 'mop_data', 'measurements'), { list: arr });
+    _clearPendingSync();
+    console.log('Firebase sync OK');
+  } catch(e) {
+    _markPendingSync();
+    console.warn('Firebase measurements save failed:', e);
+  }
+}
+
+// === PENDING SYNC ===
+function _markPendingSync() {
+  localStorage.setItem('mop_pending_sync', '1');
+  _showSyncBanner(true);
+}
+function _clearPendingSync() {
+  localStorage.removeItem('mop_pending_sync');
+  _showSyncBanner(false);
+}
+function _hasPendingSync() {
+  return localStorage.getItem('mop_pending_sync') === '1';
+}
+function _showSyncBanner(show) {
+  var banner = document.getElementById('sync-pending-banner');
+  if (!banner) return;
+  if (show) {
+    banner.style.display = 'flex';
+    banner.style.background = '#e65100';
+    banner.innerHTML =
+      '<span>⚠️ Mjerenje je spremljeno lokalno — čeka se sinkronizacija s bazom.</span>' +
+      '<button onclick="_trySyncNow()" style="background:rgba(255,255,255,0.25);border:1px solid rgba(255,255,255,0.5);color:white;padding:5px 14px;font-size:12px;border-radius:6px;cursor:pointer;width:auto;margin:0;font-weight:600;">🔄 Sinkroniziraj sada</button>';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+async function _trySyncNow() {
+  if (!_hasPendingSync()) return;
+  if (!navigator.onLine || !window.firebaseDB) {
+    var banner = document.getElementById('sync-pending-banner');
+    if (banner) {
+      banner.style.background = '#b71c1c';
+      banner.innerHTML = '<span>❌ Nema internetske veze — mjerenje i dalje čeka sinkronizaciju.</span>' +
+        '<button onclick="_trySyncNow()" style="background:rgba(255,255,255,0.25);border:1px solid rgba(255,255,255,0.5);color:white;padding:5px 14px;font-size:12px;border-radius:6px;cursor:pointer;width:auto;margin:0;font-weight:600;">🔄 Pokušaj opet</button>';
+    }
+    return;
+  }
+  const arr = loadMeasurements();
+  try {
+    const { doc, setDoc } = window.firebaseFunctions;
+    await setDoc(doc(window.firebaseDB, 'mop_data', 'measurements'), { list: arr });
+    _clearPendingSync();
+    console.log('Pending sync completed');
+    var banner = document.getElementById('sync-pending-banner');
+    if (banner) {
+      banner.style.background = '#2e7d32';
+      banner.style.display = 'flex';
+      banner.innerHTML = '<span>✅ Sinkronizacija s bazom uspješna!</span>';
+      setTimeout(function() { banner.style.display = 'none'; }, 3000);
+    }
+  } catch(e) {
+    console.warn('Pending sync failed:', e);
+  }
+}
+
+// Pokušaj sync kad se internet vrati
+window.addEventListener('online', function() {
+  console.log('Internet restored - attempting pending sync...');
+  setTimeout(_trySyncNow, 2000); // čekaj 2s da se veza stabilizira
+});
+async function loadMeasurementsFromFirebase() {
+  if (!window.firebaseDB) return null;
+  try {
+    const { doc, getDoc } = window.firebaseFunctions;
+    const snap = await getDoc(doc(window.firebaseDB, 'mop_data', 'measurements'));
+    if (snap.exists()) {
+      const list = snap.data().list || [];
+      localStorage.setItem('measurements', JSON.stringify(list));
+      return list;
+    }
+  } catch(e) {
+    console.warn('Firebase measurements load failed:', e);
+  }
+  return null;
+}
+
+// === DATETIME CLOCK ===
+let _clockInterval = null;
+function startLoginClock() {
+  const el = document.getElementById('login-datetime');
+  if (!el) return;
+  clearInterval(_clockInterval);
+  function update() {
+    const now = new Date();
+    const days = ['Nedjelja','Ponedjeljak','Utorak','Srijeda','Četvrtak','Petak','Subota'];
+    const day = days[now.getDay()];
+    const date = now.toLocaleDateString('hr-HR', { day:'2-digit', month:'2-digit', year:'numeric' });
+    const time = now.toLocaleTimeString('hr-HR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    el.textContent = `${day}, ${date} — ${time}`;
+  }
+  update();
+  _clockInterval = setInterval(update, 1000);
+}
+
+// === NOTIFICATIONS ===
+function getDismissedNotifs() {
+  return JSON.parse(localStorage.getItem('dismissedNotifs') || '[]');
+}
+function dismissAllNotifs(ids) {
+  const dismissed = getDismissedNotifs();
+  ids.forEach(id => { if (!dismissed.includes(id)) dismissed.push(id); });
+  localStorage.setItem('dismissedNotifs', JSON.stringify(dismissed));
+}
+
+async function loadNotifications() {
+  const list = document.getElementById('notifications-list');
+  if (!list) return;
+  try {
+    if (!window.firebaseDB) throw new Error('no firebase');
+    const { doc, getDoc } = window.firebaseFunctions;
+
+    const [logSnap, mSnap] = await Promise.all([
+      getDoc(doc(window.firebaseDB, 'mop_data', 'activityLog')),
+      getDoc(doc(window.firebaseDB, 'mop_data', 'measurements'))
+    ]);
+
+    const entries = logSnap.exists() ? (logSnap.data().list || []) : [];
+    const measurements = mSnap.exists() ? (mSnap.data().list || []) : [];
+
+    // Build combined notification list with stable IDs
+    const notifs = [];
+
+    entries.forEach((e, i) => {
+      notifs.push({ ...e, id: e.id || ('log_' + (e.timestamp || '').replace(/\s/g,'') + '_' + (e.text || '').replace(/\s/g,'').slice(0,10)), source: 'admin' });
+    });
+
+    measurements.slice(-10).reverse().forEach((m, i) => {
+      const ts = m.date + (m.startTime ? ' ' + m.startTime : '');
+      // Stable ID based on content, not index
+      const stableId = 'meas_' + (m.date || '') + '_' + (m.startTime || '') + '_' + (m.measurer || '').replace(/\s/g,'') + '_' + (m.landfill?.name || '').replace(/\s/g,'').slice(0,10);
+      notifs.push({
+        id: stableId,
+        source: 'measurement',
+        text: `Novo mjerenje na lokaciji <strong>${m.landfill?.name || '?'}</strong> — ${m.vents?.length || 0} odušnika`,
+        detail: `Mjeritelj: ${m.measurer} | ${m.date} ${m.startTime || ''}`,
+        timestamp: ts
+      });
+    });
+
+    notifs.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+    const allRecent = notifs.slice(0, 20);
+
+    // Filter out dismissed ones for this device
+    const dismissed = getDismissedNotifs();
+    const visible = allRecent.filter(n => !dismissed.includes(n.id));
+
+    const badge = document.getElementById('notif-badge');
+
+    if (visible.length === 0) {
+      if (badge) badge.style.display = 'none';
+      list.innerHTML = '<p style="color:#aaa;font-size:13px;text-align:center;padding:10px;">Nema novih obavijesti.</p>';
+      return;
+    }
+
+    if (badge) { badge.textContent = visible.length; badge.style.display = 'flex'; }
+
+    // Render with dismiss button per item + dismiss all button
+    const allIds = visible.map(n => n.id);
+    list.innerHTML = `
+      <div style="text-align:right;margin-bottom:8px;">
+        <button onclick="dismissAllNotifs(${JSON.stringify(allIds).replace(/"/g,"'")});loadNotifications();" 
+          style="background:none;border:1px solid #ccc;border-radius:6px;padding:4px 10px;font-size:12px;color:#888;cursor:pointer;">
+          🗑️ Obriši sve obavijesti
+        </button>
+      </div>
+      ${visible.map(n => {
+        const icon = n.source === 'measurement' ? '📏' : '⚙️';
+        const cls = n.source === 'measurement' ? 'notif-measurement' : 'notif-admin';
+        const safeId = n.id.replace(/'/g, "\\'");
+        return `<div class="notif-item ${cls}" id="notif-${n.id.replace(/[^a-z0-9]/gi,'_')}">
+          <span class="notif-icon">${icon}</span>
+          <div style="flex:1;">
+            <div>${n.text}</div>
+            ${n.detail ? `<div style="color:#666;font-size:12px;margin-top:2px;">${n.detail}</div>` : ''}
+            <div class="notif-time">${n.timestamp || ''}</div>
+          </div>
+          <button onclick="dismissAllNotifs(['${safeId}']);loadNotifications();"
+            style="background:none;border:none;color:#bbb;font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0;" title="Obriši">✕</button>
+        </div>`;
+      }).join('')}
+    `;
+  } catch(e) {
+    list.innerHTML = '<p style="color:#aaa;font-size:13px;text-align:center;padding:10px;">Obavijesti nisu dostupne.</p>';
+  }
+}
+function updateHistoryList(filtered = null) {
+  const allMeasurements = loadMeasurements();
+  const measurements = filtered || allMeasurements;
+  const historyList = document.getElementById('history-list');
+  historyList.innerHTML = '';
+  if (measurements.length === 0) {
+    historyList.innerHTML = '<p style="text-align:center;color:#888;">Nema zapisanih mjerenja.</p>';
+    return;
+  }
+  measurements.slice().reverse().forEach((m, revIdx) => {
+    const originalIndex = allMeasurements.findIndex(function(x){ return x.date === m.date && x.measurer === m.measurer && (x.landfill && m.landfill && x.landfill.name === m.landfill.name); });
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const ventCount = m.vents ? m.vents.length : 0;
+    
+    // Formatiranje vremena (ako postoje u objektu)
+    const vrijemePocetka = m.startTime || 'Nije upisano';
+    const vrijemeZavrsetka = m.endTime || 'Nije upisano';
+    
+    item.innerHTML = `
+      <h3>${m.landfill.name}</h3>
+      <p><strong>Datum:</strong> ${m.date}</p>
+      <p><strong>Vrijeme:</strong> ${vrijemePocetka} - ${vrijemeZavrsetka}</p>
+      <p><strong>Mjeritelj:</strong> ${m.measurer}</p>
+      <p><strong>Uređaj:</strong> ${m.device}</p>
+      <p><strong>Broj odušnika:</strong> ${ventCount}</p>
+      <div class="button-group">
+        <button class="share-btn" onclick="shareMeasurement(${originalIndex})">📤 Podijeli</button>
+        <button onclick="editMeasurement(${originalIndex})">Uredi</button>
+        <button style="background:#e74c3c;" onclick="deleteMeasurement(${originalIndex})">Obriši</button>
+        <button style="background:#2c3e50;" onclick="exportToExcel(${originalIndex})">💾 Excel</button>
+        <button style="background:#c62828;" onclick="exportToPDF(${originalIndex})">📄 PDF</button>
+        <button style="background:#6a1b9a;" onclick="setReminder(${originalIndex})">🔔 Podsjetnik</button>
+      </div>
+    `;
+    historyList.appendChild(item);
+  });
+}
+function editMeasurement(index) {
+  const measurements = loadMeasurements();
+  const m = measurements[index];
+  state.currentMeasurement = m;
+  state.currentMeasurer = m.measurer;
+  state.currentDevice = m.device;
+  state.selectedLandfill = m.landfill;
+  state.editingIndex = index;
+  showScreen('new-measurement');
+  document.getElementById('measurer-select').value = m.measurer;
+  document.getElementById('device-select').value = m.device;
+  renderDeviceDropdown();
+  document.getElementById('measurement-date').value = m.date;
+  document.getElementById('air-temp').value = m.airTemp;
+  document.getElementById('air-pressure').value = m.airPressure;
+  document.getElementById('wind-direction').value = m.windDirection;
+  document.getElementById('wind-speed').value = m.windSpeed;
+  if (m.startTime) {
+    const [hour, minute] = m.startTime.split(':');
+    document.getElementById('start-hour').value = hour;
+    document.getElementById('start-minute').value = minute;
+  }
+}
+function deleteMeasurement(index) {
+  if (!confirm("Jeste li sigurni da želite obrisati ovo mjerenje?")) return;
+  const measurements = loadMeasurements();
+  measurements.splice(index, 1);
+  saveMeasurements(measurements);
+  updateHistoryList();
+}
+function exportToExcel(index) {
+  const measurements = loadMeasurements();
+  const measurement = measurements[index];
+  
+  // Formatiranje vremena (ako postoje u objektu)
+  const vrijemePocetka = measurement.startTime || 'Nije upisano';
+  const vrijemeZavrsetka = measurement.endTime || 'Nije upisano';
+
+ const aoa = [
+    ["IZVJEŠTAJ O MJERENJU ODLAGALIŠNIH PLINOVA", "", "", "", "", "", "", "", "", ""],
+    ["Obrazac ZM-05-G", "", "", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", "", "", "", ""],
+    ["Lokacija i naziv odlagališta:", measurement.landfill.name, "", "", "", "Datum:", measurement.date, "", ""],
+    ["", "", "", "", "", "", "", "", "", ""],
+    ["Mjeritelj:", measurement.measurer, "", "", "", "Korišteni uređaj:", measurement.device, "", ""],
+    ["", "", "", "", "", "", "", "", "", ""],
+    ["Temperatura zraka [°C]:", measurement.airTemp || "", "", "Smjer vjetra:", measurement.windDirection || "", ""],
+    ["Tlak zraka [hPa]:", measurement.airPressure || "", "", "Brzina vjetra [m/s]:", measurement.windSpeed || "", "", "Početak mjerenja:", measurement.startTime || ""],
+    ["", "", "", "", "", "", "", "", "", ""],
+    ["Odušak", "CH4 [%]", "CO2 [%]", "O2 [%]", "H2 [ppm]", "H2S [ppm]", "Temperatura", "Status", "Napomena"]
+  ];
+
+  measurement.vents.forEach(vent => {
+    aoa.push([
+      vent.name,
+      vent.ch4 || "",
+      vent.co2 || "",
+      vent.o2 || "",
+      vent.h2 || "",
+      vent.h2s || "",
+      vent.temp || "",
+      vent.status === 'measured' ? 'Izmjeren' : 'Ne može se izmjeriti',
+      vent.note || ""
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Mjerenje");
+
+  const safeName = measurement.landfill.name.replace(/[^a-zA-Z0-9]/g, '_');
+  const filename = `Mjerenje_${measurement.date.replace(/-/g, '_')}_${safeName}.xlsx`;
+
+  XLSX.writeFile(wb, filename);
+}
+
+function exportToPDF(index) {
+  const measurements = loadMeasurements();
+  const m = measurements[index];
+  if (!m) return;
+
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) { alert('jsPDF biblioteka se učitava, pokušaj za trenutak.'); return; }
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageW = 210;
+  const marginL = 20;
+  const marginR = 20;
+  const contentW = pageW - marginL - marginR;
+  let y = 20;
+
+  // ── Gustoće plinova (kg/m³ pri 0°C, 1 atm) ──
+  const DENSITY = { ch4: 0.717, co2: 1.977, o2: 1.429, h2: 0.090, h2s: 1.539 };
+
+  function calcMassConc(vol_pct, gasKey) {
+    // g/m³ = (vol% / 100) × gustoća (kg/m³) × 1000
+    if (!vol_pct) return null;
+    return (parseFloat(vol_pct) / 100) * DENSITY[gasKey] * 1000;
+  }
+  function calcMassConcPpm(ppm, gasKey) {
+    // g/m³ = (ppm / 1e6) × gustoća (kg/m³) × 1000 × 1000 → mg/m³ / 1000
+    // = ppm × gustoća × 1e-3 (g/m³)
+    if (!ppm) return null;
+    return (parseFloat(ppm) / 1e6) * DENSITY[gasKey] * 1e6; // → mg/m³
+    // vraćamo mg/m³ za H2 i H2S
+  }
+  function calcFlow(dummy) { return null; } // placeholder
+  // ── Pomoćne funkcije za crtanje ──
+  function line(x1, y1, x2, y2, lw) {
+    doc.setLineWidth(lw || 0.3);
+    doc.line(x1, y1, x2, y2);
+  }
+  function text(str, x, yy, opts) {
+    doc.text(str, x, yy, opts || {});
+  }
+  function checkPage(needed) {
+    if (y + needed > 280) {
+      doc.addPage();
+      y = 20;
+    }
+  }
+
+  // ── Zaglavlje dokumenta ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  text('MJERENJE ODLAGALIŠNIH PLINOVA', marginL, y);
+  y += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  text('Lokacija: ' + (m.landfill?.name || ''), marginL, y);
+  y += 5;
+  text('Datum: ' + (m.date || '') + '   Početak: ' + (m.startTime || '') + '   Kraj: ' + (m.endTime || ''), marginL, y);
+  y += 5;
+  text('Mjeritelj: ' + (m.measurer || '') + '   Uređaj: ' + (m.device || ''), marginL, y);
+  y += 5;
+  text('Temp. zraka: ' + (m.airTemp || '-') + ' °C   Tlak: ' + (m.airPressure || '-') + ' hPa   ' +
+       'Vjetar: ' + (m.windDirection || '') + ' ' + (m.windSpeed || '-') + ' m/s', marginL, y);
+  y += 4;
+  line(marginL, y, pageW - marginR, y, 0.5);
+  y += 6;
+
+  // ── Odušnici ──
+  const measuredVents = (m.vents || []).filter(v => v.status === 'measured');
+
+  measuredVents.forEach(function(v, idx) {
+    checkPage(90);
+
+    const ventNum = idx + 1;
+
+    // Naslov mjernog mjesta
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    text('Mjerno mjesto ' + ventNum, marginL, y);
+    y += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    text('Oznaka mjernog mjesta: ' + v.name, marginL + 8, y);
+    y += 7;
+
+    // Rezultati mjerenja - podaci
+    text('Rezultati mjerenja:', marginL + 8, y);
+    y += 6;
+
+    const col1 = marginL + 12;
+    const col2 = marginL + 65;
+    const col3 = marginL + 90;
+
+    if (v.temp) {
+      text('Temperatura plinova:', col1, y);
+      text(parseFloat(v.temp).toFixed(1) + ' °C', col2, y);
+      y += 5;
+    }
+    if (v.diameter) {
+      text('Promjer odzračnika:', col1, y);
+      text(v.diameter + ' cm', col2, y);
+      y += 5;
+    }
+    y += 2;
+
+    // Volumni udjeli
+    const gasRows = [
+      { key: 'ch4', label: 'CH\u2084', val: v.ch4,  unit: '%',   name: '(metan)' },
+      { key: 'co2', label: 'CO\u2082', val: v.co2,  unit: '%',   name: '(ugljikov dioksid)' },
+      { key: 'o2',  label: 'O\u2082',  val: v.o2,   unit: '%',   name: '(kisik)' },
+      { key: 'h2',  label: 'H\u2082',  val: v.h2,   unit: 'ppm', name: '(vodik)' },
+      { key: 'h2s', label: 'H\u2082S', val: v.h2s,  unit: 'ppm', name: '(sumporovodik)' },
+    ];
+
+    gasRows.forEach(function(g) {
+      if (!g.val) return;
+      text(g.label, col1, y);
+      text(g.val + ' ' + g.unit, col1 + 10, y);
+      text(g.name, col1 + 30, y);
+      y += 5;
+    });
+    y += 3;
+
+    // Masene koncentracije - samo g/m³
+    const hasMass = v.diameter;
+    if (hasMass) {
+      checkPage(50);
+      text('Masene koncentracije:', marginL + 8, y);
+      y += 6;
+
+      const massRows = [
+        { label: 'CH\u2084', val: v.ch4,  conc: calcMassConc(v.ch4, 'ch4'),       unit: 'g/m\u00B3'  },
+        { label: 'CO\u2082', val: v.co2,  conc: calcMassConc(v.co2, 'co2'),       unit: 'g/m\u00B3'  },
+        { label: 'O\u2082',  val: v.o2,   conc: calcMassConc(v.o2,  'o2'),        unit: 'g/m\u00B3'  },
+        { label: 'H\u2082',  val: v.h2,   conc: calcMassConcPpm(v.h2,  'h2'),     unit: 'mg/m\u00B3' },
+        { label: 'H\u2082S', val: v.h2s,  conc: calcMassConcPpm(v.h2s, 'h2s'),   unit: 'mg/m\u00B3' },
+      ];
+
+      massRows.forEach(function(g) {
+        if (!g.val || g.conc === null) return;
+        text(g.label, col1, y);
+        text(g.conc.toFixed(2) + ' ' + g.unit, col1 + 10, y);
+        y += 5;
+      });
+    } else if (v.ch4 || v.co2 || v.o2) {
+      checkPage(20);
+      doc.setTextColor(150, 150, 150);
+      text('(Masene koncentracije nisu izračunate — nedostaje promjer odušnika)', marginL + 8, y);
+      doc.setTextColor(0, 0, 0);
+      y += 5;
+    }
+
+    y += 4;
+    line(marginL, y, pageW - marginR, y, 0.2);
+    y += 6;
+  });
+
+  // Odušnici koji se nisu mogli izmjeriti
+  const notMeasured = (m.vents || []).filter(v => v.status === 'not_measurable');
+  if (notMeasured.length > 0) {
+    checkPage(15);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    text('Mjerna mjesta koja nisu mogla biti izmjerena:', marginL, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    notMeasured.forEach(function(v) {
+      text('• ' + v.name + (v.note ? ' — ' + v.note : ''), marginL + 4, y);
+      y += 5;
+    });
+  }
+
+  // ── Podnožje ──
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Stranica ' + i + ' / ' + pageCount, pageW / 2, 290, { align: 'center' });
+    doc.text('MOP — Mjerenje odlagališnih plinova', marginL, 290);
+    doc.setTextColor(0, 0, 0);
+  }
+
+  const safeName = (m.landfill?.name || 'Mjerenje').replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save('Mjerenje_' + (m.date || '').replace(/-/g, '_') + '_' + safeName + '.pdf');
+}
+
+async function exportToWord(index) {
+  const measurements = loadMeasurements();
+  const measurement = measurements[index];
+  
+  // Provjeri da li je webhook URL postavljen
+  if (!POWER_AUTOMATE_WEBHOOK_URL || POWER_AUTOMATE_WEBHOOK_URL === 'TVOJ_WEBHOOK_URL_OVDJE') {
+    alert('Power Automate webhook URL nije postavljen!\n\nMolimo pročitaj UPUTE_POWER_AUTOMATE.md za upute kako postaviti integraciju.');
+    return;
+  }
+  
+  // Dohvati mjesec iz datuma
+  const date = new Date(measurement.date);
+  const months = ['SIJEČANJ', 'VELJAČA', 'OŽUJAK', 'TRAVANJ', 'SVIBANJ', 'LIPANJ', 
+                  'SRPANJ', 'KOLOVOZ', 'RUJAN', 'LISTOPAD', 'STUDENI', 'PROSINAC'];
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  
+  // Formatiraj datum za "u Zagrebu"
+  const day = date.getDate().toString().padStart(2, '0');
+  const monthNum = (date.getMonth() + 1).toString().padStart(2, '0');
+  const dateFormatted = `${day}.${monthNum}.${year}`;
+  
+  // Pripremi podatke za Power Automate
+  const data = {
+    datum: dateFormatted,
+    narucitelj: measurement.landfill.client || '',
+    nazivDokumenta: `${measurement.landfill.reportTitle} (${month} ${year})`,
+    mjesec: month,
+    godina: year.toString()
+  };
+  
+  try {
+    // Prikaži poruku da se dokument generira
+    const loadingMsg = document.createElement('div');
+    loadingMsg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:30px;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:9999;text-align:center;';
+    loadingMsg.innerHTML = '<h2 style="color:#2e7d32;margin:0 0 15px 0;">⏳ Generiranje dokumenta...</h2><p style="margin:0;color:#666;">Molimo pričekajte...</p>';
+    document.body.appendChild(loadingMsg);
+    
+    // Pošalji zahtjev na Power Automate
+    const response = await fetch(POWER_AUTOMATE_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    // Ukloni poruku o učitavanju
+    document.body.removeChild(loadingMsg);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP greška! Status: ${response.status}`);
+    }
+    
+    // Preuzmi dokument kao blob
+    const blob = await response.blob();
+    
+    // Stvori link za preuzimanje
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const safeName = measurement.landfill.name.replace(/[^a-zA-Z0-9]/g, '_');
+    link.download = `Naslovna_${measurement.date.replace(/-/g, '_')}_${safeName}.docx`;
+    link.click();
+    
+    // Očisti URL
+    URL.revokeObjectURL(url);
+    
+    // Prikaži poruku o uspjehu
+    alert('✅ Dokument je uspješno preuzet!');
+    
+  } catch (error) {
+    console.error('Greška pri generiranju dokumenta:', error);
+    alert(`❌ Greška pri generiranju dokumenta!\n\nDetalji: ${error.message}\n\nProvjeri:\n1. Da li je Power Automate tijek pokrenut\n2. Da li je webhook URL točan\n3. Konzolu preglednika (F12) za više detalja`);
+  }
+}
+
+async function shareMeasurement(index) {
+  if (navigator.share) {
+    const measurements = loadMeasurements();
+    const m = measurements[index];
+    const ventCount = m.vents ? m.vents.length : 0;
+    
+    // Formatiranje vremena (ako postoje u objektu)
+    const vrijemePocetka = m.startTime;
+    const vrijemeZavrsetka = m.endTime;
+
+    let ventSummary = "";
+    if (ventCount > 0) {
+      ventSummary = `\n\n📊 DETALJI PO ODUŠNICIMA:\n${m.vents.map(v => 
+        `📍 ${v.name}:\n` +
+        `   CH₄: ${v.ch4 || '-'}%\n` +
+        `   CO₂: ${v.co2 || '-'}%\n` +
+        `   O₂: ${v.o2 || '-'}%\n` +
+        `   H₂: ${v.h2 || '-'} ppm\n` +
+        `   H₂S: ${v.h2s || '-'} ppm\n` +
+        `   Temp: ${v.temp || '-'}°C\n` +
+        `   Status: ${v.status === 'measured' ? 'Izmjeren' : 'Ne može se izmjeriti'}\n` +
+        `   Napomena: ${v.note || '-'}`
+      ).join('\n\n')}`;
+    }
+
+    const shareData = {
+      title: `Izvještaj: ${m.landfill.name}`,
+      text: `♻️ IZVJEŠTAJ MJERENJA PLINOVA\n` +
+            `---------------------------\n` +
+            `📍 Odlagalište: ${m.landfill.name}\n` +
+            `📅 Datum: ${m.date}\n` +
+            `⏰ Vrijeme: ${vrijemePocetka} - ${vrijemeZavrsetka}\n` +
+            `👤 Mjeritelj: ${m.measurer}\n` +
+            `📟 Uređaj: ${m.device}\n` +
+            `💨 Broj odušnika: ${ventCount}` +
+            `${ventSummary}`
+    };
+
+    try {
+      await navigator.share(shareData);
+    } catch(err) {
+      console.error('Greška pri dijeljenju:', err);
+    }
+  } else {
+    alert('Dijeljenje nije podržano na ovom pregledniku. Pokušajte na mobilnom uređaju.');
+  }
+}
+function populateTimeDropdowns() {
+  const hourSelect = document.getElementById('start-hour');
+  const minuteSelect = document.getElementById('start-minute');
+  hourSelect.innerHTML = '<option value="">Sat</option>';
+  minuteSelect.innerHTML = '<option value="">Min</option>';
+  for (let h = 0; h < 24; h++) {
+    const val = h.toString().padStart(2, '0');
+    hourSelect.innerHTML += `<option value="${val}">${val}</option>`;
+  }
+  for (let m = 0; m < 60; m += 5) {
+    const val = m.toString().padStart(2, '0');
+    minuteSelect.innerHTML += `<option value="${val}">${val}</option>`;
+  }
+}
+function populateFilterDropdowns() {
+  const landfillSelect = document.getElementById('filter-landfill-select');
+  const measurerSelect = document.getElementById('filter-measurer-select');
+  LANDFILLS.forEach(l => {
+    const option = document.createElement('option');
+    option.value = l.name;
+    option.textContent = l.name;
+    landfillSelect.appendChild(option);
+  });
+  MEASURERS.forEach(m => {
+    const option = document.createElement('option');
+    option.value = m;
+    option.textContent = m;
+    measurerSelect.appendChild(option);
+  });
+}
+function applyFilters() {
+  const landfillFilter = document.getElementById('filter-landfill-select').value;
+  const measurerFilter = document.getElementById('filter-measurer-select').value;
+  const startDateFilter = document.getElementById('filter-start-date').value;
+  const endDateFilter = document.getElementById('filter-end-date').value;
+  let measurements = loadMeasurements();
+  const filtered = measurements.filter(m => {
+    const matchLandfill = !landfillFilter || (m.landfill && m.landfill.name === landfillFilter);
+    const matchMeasurer = !measurerFilter || m.measurer === measurerFilter;
+    const matchDate = (!startDateFilter || m.date >= startDateFilter) && (!endDateFilter || m.date <= endDateFilter);
+    return matchLandfill && matchMeasurer && matchDate;
+  });
+  updateHistoryList(filtered);
+}
+function clearFilters() {
+  document.getElementById('filter-landfill-select').value = '';
+  document.getElementById('filter-measurer-select').value = '';
+  document.getElementById('filter-start-date').value = '';
+  document.getElementById('filter-end-date').value = '';
+  updateHistoryList();
+}
+
+// === BACKUP MJERENJA ===
+function _downloadJSON(data, filename) {
+  var json = JSON.stringify(data, null, 2);
+  var blob = new Blob([json], { type: 'application/json' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function backupCurrentMonth() {
+  var all  = loadMeasurements();
+  var now  = new Date();
+  var y    = now.getFullYear();
+  var m    = now.getMonth(); // 0-based
+  var filtered = all.filter(function(meas) {
+    if (!meas.date) return false;
+    var d = new Date(meas.date);
+    return d.getFullYear() === y && d.getMonth() === m;
+  });
+  if (filtered.length === 0) {
+    alert('Nema mjerenja za ovaj mjesec.');
+    return;
+  }
+  var mm  = String(m + 1).padStart(2, '0');
+  var yy  = String(y).slice(2);
+  var filename = 'Odlagalisni_plinovi_' + mm + '_' + yy + '.json';
+  _downloadJSON({ metadata: { mjesec: mm, godina: y, ukupno: filtered.length, export_datum: now.toISOString() }, mjerenja: filtered }, filename);
+}
+
+function backupAllData() {
+  var all = loadMeasurements();
+  if (all.length === 0) {
+    alert('Nema mjerenja za backup.');
+    return;
+  }
+  var now  = new Date();
+  var filename = 'Odlagalisni_plinovi_SVA_' + now.toISOString().slice(0,10) + '.json';
+  _downloadJSON({ metadata: { ukupno: all.length, export_datum: now.toISOString() }, mjerenja: all }, filename);
+}
+
+function backupSelectedMonth() {
+  var sel = document.getElementById('backup-month-select');
+  if (!sel || !sel.value) { alert('Odaberi mjesec iz padajućeg izbornika.'); return; }
+  var parts = sel.value.split('-');
+  var y = parseInt(parts[0]);
+  var m = parseInt(parts[1]) - 1; // 0-based
+  var all = loadMeasurements();
+  var filtered = all.filter(function(meas) {
+    if (!meas.date) return false;
+    var d = new Date(meas.date);
+    return d.getFullYear() === y && d.getMonth() === m;
+  });
+  if (filtered.length === 0) { alert('Nema mjerenja za odabrani mjesec.'); return; }
+  var mm = String(m + 1).padStart(2, '0');
+  var yy = String(y).slice(2);
+  var filename = 'Odlagalisni_plinovi_' + mm + '_' + yy + '.json';
+  _downloadJSON({ metadata: { mjesec: mm, godina: y, ukupno: filtered.length, export_datum: new Date().toISOString() }, mjerenja: filtered }, filename);
+}
+
+function initBackupBar() {
+  var info = document.getElementById('backup-bar-info');
+  if (!info) return;
+  var now       = new Date();
+  var y         = now.getFullYear();
+  var m         = now.getMonth();
+  var mm        = String(m + 1).padStart(2, '0');
+  var all       = loadMeasurements();
+  var thisMonth = all.filter(function(meas) {
+    if (!meas.date) return false;
+    var d = new Date(meas.date);
+    return d.getFullYear() === y && d.getMonth() === m;
+  });
+  var mjeseci = ['siječanj','veljača','ožujak','travanj','svibanj','lipanj','srpanj','kolovoz','rujan','listopad','studeni','prosinac'];
+  info.textContent = thisMonth.length + ' mjerenja u ' + mjeseci[m] + ' ' + y + '.';
+
+  // Highlight gumba ako je zadnji dan u mjesecu
+  var lastDay = new Date(y, m + 1, 0).getDate();
+  if (now.getDate() === lastDay) {
+    var btn = document.getElementById('backup-month-btn');
+    if (btn) {
+      btn.style.background = '#f57f17';
+      btn.style.animation  = 'pulse 1.5s infinite';
+      btn.textContent      = '📥 Preuzmi ' + mm + '/' + String(y).slice(2) + ' (danas!)';
+    }
+  }
+
+  // Popuni dropdown s dostupnim mjesecima iz mjerenja
+  var sel = document.getElementById('backup-month-select');
+  if (!sel) return;
+  // Pokupi sve jedinstvene godine+mjesece
+  var monthSet = {};
+  all.forEach(function(meas) {
+    if (!meas.date) return;
+    var d  = new Date(meas.date);
+    var ky = d.getFullYear();
+    var km = d.getMonth();
+    var key = ky + '-' + String(km + 1).padStart(2, '0');
+    if (!monthSet[key]) monthSet[key] = { y: ky, m: km, count: 0 };
+    monthSet[key].count++;
+  });
+  // Sortiraj silazno
+  var keys = Object.keys(monthSet).sort().reverse();
+  sel.innerHTML = '<option value="">📦 Odaberi mjesec...</option>';
+  keys.forEach(function(key) {
+    var entry = monthSet[key];
+    var label = mjeseci[entry.m] + ' ' + entry.y + ' (' + entry.count + ')';
+    var opt   = document.createElement('option');
+    opt.value       = key;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  });
+}
+
+function initApp() {
+  // Ovdje zalijepi kod za Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js');
+    });
+  }
+
+  // Ostatak tvog koda se nastavlja dalje...
+  const select = document.getElementById('landfill-select');
+  const filterSelect = document.getElementById('filter-landfill');
+  // ...
+  const measurerSelect = document.getElementById('measurer-select');
+  MEASURERS.forEach(m => {
+    const option = document.createElement('option');
+    option.value = m;
+    option.textContent = m;
+    measurerSelect.appendChild(option);
+  });
+  populateTimeDropdowns();
+  
+  // Dodano: Učitaj privremeno mjerenje ako postoji
+  const savedMeasurement = localStorage.getItem('tempMeasurement');
+  if (savedMeasurement) {
+    if (confirm("Pronađeno je nespremljeno mjerenje. Želite li ga nastaviti?")) {
+      const tempMeasurement = JSON.parse(savedMeasurement);
+      state.currentMeasurement = tempMeasurement;
+      state.currentMeasurer = tempMeasurement.measurer;
+      state.currentDevice = tempMeasurement.device;
+      state.selectedLandfill = tempMeasurement.landfill;
+      showScreen('new-measurement');
+      // Ažuriraj formu s učitanim podacima
+      document.getElementById('measurer-select').value = state.currentMeasurer;
+      document.getElementById('device-select').value = state.currentDevice;
+      renderDeviceDropdown();
+      document.getElementById('measurement-date').value = state.currentMeasurement.date;
+      document.getElementById('air-temp').value = state.currentMeasurement.airTemp;
+      document.getElementById('air-pressure').value = state.currentMeasurement.airPressure;
+      document.getElementById('wind-direction').value = state.currentMeasurement.windDirection;
+      document.getElementById('wind-speed').value = state.currentMeasurement.windSpeed;
+      if (state.currentMeasurement.startTime) {
+        const [hour, minute] = state.currentMeasurement.startTime.split(':');
+        document.getElementById('start-hour').value = hour;
+        document.getElementById('start-minute').value = minute;
+      }
+    } else {
+      localStorage.removeItem('tempMeasurement');
+    }
+  }
+
+  document.getElementById('password-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const p = document.getElementById('password-input').value;
+    const c = atob('MzczNw=='); // Obfuskirana lozinka
+    if (p !== c) {
+      alert("Neispravan pristupni kod!");
+      return;
+    }
+    showScreen('login-screen');
+    loadNotifications();
+    startLoginClock();
+  });
+
+  document.getElementById('login-form').addEventListener('submit', e => {
+    e.preventDefault();
+    state.currentMeasurer = document.getElementById('measurer-select').value;
+    state.currentDevice = document.getElementById('device-select').value;
+    if (!state.currentMeasurer || !state.currentDevice) {
+      alert("Odaberite mjeritelja i uređaj za mjerenje!");
+      return;
+    }
+    showScreen('template-landfill-screen');
+    initLandfillGrid();
+  });
+  document.getElementById('go-to-history').addEventListener('click', async () => {
+    populateFilterDropdowns();
+    // Show loading state
+    document.getElementById('history-list').innerHTML = '<p style="text-align:center;color:#888;">Učitavam mjerenja...</p>';
+    showScreen('measurement-history');
+    initBackupBar();
+    // Try to load from Firebase first
+    const fbData = await loadMeasurementsFromFirebase();
+    updateHistoryList(fbData || undefined);
+  });
+  document.getElementById('template-landfill-next').addEventListener('click', () => {
+    const warn = document.getElementById('template-landfill-warning');
+    if (!state.selectedLandfill) {
+      warn.textContent = "Niste odabrali odlagalište!";
+      warn.style.display = "block";
+      return;
+    }
+    warn.style.display = "none";
+    state.editingIndex = -1;
+    state.editingVentIndex = -1;
+    document.getElementById('measurement-submit-btn').textContent = 'Spremi promjene';
+    // Poništi podatke ako se započinje novo mjerenje
+    state.currentMeasurement = {
+      measurer: state.currentMeasurer,
+      device: state.currentDevice,
+      landfill: state.selectedLandfill,
+      date: new Date().toISOString().split('T')[0],
+      airTemp: '',
+      airPressure: '',
+      windDirection: '',
+      windSpeed: '',
+      
+      startTime: '',
+      vents: []
+    };
+    clearMeasurementForm();
+    showScreen('new-measurement');
+    
+    // Automatski popuni vremenske podatke
+    autoFillWeatherData();
+  });
+  document.getElementById('measurement-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const hour = document.getElementById('start-hour').value;
+    const minute = document.getElementById('start-minute').value;
+    if (!hour || !minute) {
+      alert("Odaberite vrijeme početka (sat i minuta)!");
+      return;
+    }
+    state.currentMeasurement.date = document.getElementById('measurement-date').value;
+    state.currentMeasurement.airTemp = document.getElementById('air-temp').value;
+    state.currentMeasurement.airPressure = document.getElementById('air-pressure').value;
+    state.currentMeasurement.windDirection = document.getElementById('wind-direction').value;
+    state.currentMeasurement.windSpeed = document.getElementById('wind-speed').value;
+    
+    state.currentMeasurement.startTime = `${hour}:${minute}`;
+    document.getElementById('landfill-name-display').textContent = state.currentMeasurement.landfill.name;
+    document.getElementById('landfill-map').src = state.currentMeasurement.landfill.image;
+    
+    // Dodano: spremi podatke u privremenu pohranu nakon unosa u formu
+    localStorage.setItem('tempMeasurement', JSON.stringify(state.currentMeasurement));
+    
+    updateVentTable();
+    updateMissingVentsWarning();
+    showScreen('vent-mapping');
+    
+    // Initialize interactive map after image loads
+    const mapImg = document.getElementById('landfill-map');
+    if (mapImg.complete) {
+      // Image already loaded
+      setTimeout(() => {
+        initInteractiveMap();
+      }, 100);
+    } else {
+      // Wait for image to load
+      mapImg.addEventListener('load', () => {
+        initInteractiveMap();
+      }, { once: true });
+    }
+  });
+  document.getElementById('add-vent-btn').addEventListener('click', showVentForm);
+  document.getElementById('refresh-weather-btn').addEventListener('click', autoFillWeatherData);
+  document.getElementById('vent-list').addEventListener('click', e => {
+    const row = e.target.closest('tr');
+    if (!row) return;
+    const index = Array.from(row.parentNode.children).indexOf(row);
+    editVent(index);
+  });
+  // Dodaj event listener za promjenu statusa
+  document.querySelectorAll('input[name="vent-status"]').forEach(radio => {
+    radio.addEventListener('change', toggleVentFields);
+  });
+  
+  document.getElementById('vent-form').addEventListener('submit', e => {
+    e.preventDefault();
+    saveVentData();
+  });
+  document.getElementById('finish-measurement').addEventListener('click', finishMeasurement);
+  document.getElementById('apply-filters-btn').addEventListener('click', applyFilters);
+  document.getElementById('clear-filters-btn').addEventListener('click', clearFilters);
+  
+  // Event listeneri za modale
+  document.getElementById('vent-select-confirm').onclick = function() {
+    const dropdown = document.getElementById('vent-select-dropdown');
+    const selected = dropdown.value;
+    if (!selected) {
+      alert("Odaberite odušnik!");
+      return;
+    }
+    document.getElementById('vent-name').value = selected;
+    document.getElementById('vent-index').value = -1;
+    document.getElementById('vent-form').reset();
+    document.getElementById('vent-name').value = selected;
+    document.getElementById('vent-form').style.display = 'block';
+    updateInputSteps();
+    setTimeout(function(){ var f = document.getElementById('vent-form'); if(f) f.scrollIntoView({behavior:'smooth', block:'start'}); }, 80);
+    loadPreviousMeasurement(selected);
+    closeVentSelectModal();
+  };
+  
+  document.getElementById('manual-vent-open').onclick = function(e) {
+    e.preventDefault();
+    closeVentSelectModal();
+    openManualVentModal();
+  };
+  
+  document.getElementById('manual-vent-confirm').onclick = function() {
+    const name = document.getElementById('manual-vent-input').value.trim();
+    if (!name) {
+      alert("Unesi naziv novog odušnika!");
+      return;
+    }
+    document.getElementById('vent-name').value = name;
+    document.getElementById('vent-index').value = -1;
+    document.getElementById('vent-form').reset();
+    document.getElementById('vent-name').value = name;
+    document.getElementById('vent-form').style.display = 'block';
+    updateInputSteps();
+    setTimeout(function(){ var f = document.getElementById('vent-form'); if(f) f.scrollIntoView({behavior:'smooth', block:'start'}); }, 80);
+    loadPreviousMeasurement(name);
+    closeManualVentModal();
+  };
+  
+  // Validacija za H2 i H2S - samo cijeli brojevi (bez decimala)
+  document.getElementById('h2').addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^\d]/g, ''); // Samo brojevi, bez decimala
+  });
+  
+  document.getElementById('h2s').addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^\d]/g, ''); // Samo brojevi, bez decimala
+  });
+  
+  // Validacija za temperaturu - max 1 decimala
+  document.getElementById('vent-temp').addEventListener('input', function(e) {
+    let value = this.value;
+    const oldValue = value;
+    
+    // Zamijeni zarez s točkom
+    if (value.includes(',')) {
+      value = value.replace(',', '.');
+    }
+    
+    // Ako ima točku
+    if (value.includes('.')) {
+      const dotIndex = value.indexOf('.');
+      let beforeDot = value.substring(0, dotIndex);
+      let afterDot = value.substring(dotIndex + 1);
+      
+      // Očisti sve osim brojeva
+      beforeDot = beforeDot.replace(/[^\d]/g, '');
+      afterDot = afterDot.replace(/[^\d.]/g, '').replace(/\./g, '');
+      
+      // Ograniči na 1 decimalu
+      afterDot = afterDot.slice(0, 1);
+      
+      // Postavi vrijednost SAMO ako je različita
+      const newValue = beforeDot + '.' + afterDot;
+      if (newValue !== oldValue) {
+        this.value = newValue;
+      }
+    } else {
+      // Samo brojevi
+      value = value.replace(/[^\d]/g, '');
+      if (this.value !== value) {
+        this.value = value;
+      }
+    }
+  });
+  
+  updateHistoryList();
+  
+  // Reload vents and coordinates from localStorage (in case admin panel added new vents/coordinates)
+  VENTS_BY_LANDFILL = getVentsByLandfill();
+  VENT_COORDINATES = getVentCoordinates();
+  applyCustomLandfillData(); // Apply custom names and images
+  
+  console.log('=== PAGE LOADED - DATA RELOADED ===');
+  console.log('Vents reloaded on page load:', VENTS_BY_LANDFILL);
+  console.log('Coordinates reloaded on page load:', VENT_COORDINATES);
+  console.log('localStorage.additionalVents:', localStorage.getItem('additionalVents'));
+  
+  if (localStorage.getItem('tempMeasurement') === null || !JSON.parse(localStorage.getItem('tempMeasurement')).landfill) {
+      showScreen('password-screen');
+  }
+}
+
+// Function to manually reload vents (for debugging)
+window.reloadVentsData = function() {
+  console.log('=== MANUAL RELOAD TRIGGERED ===');
+  VENTS_BY_LANDFILL = getVentsByLandfill();
+  VENT_COORDINATES = getVentCoordinates();
+  applyCustomLandfillData(); // Apply custom names and images
+  
+  console.log('Vents reloaded:', VENTS_BY_LANDFILL);
+  console.log('Coordinates reloaded:', VENT_COORDINATES);
+  console.log('Landfills:', LANDFILLS);
+  alert('Podaci ponovno učitani! Pogledaj konzolu za detalje.');
+  
+  // Refresh vent dropdown if on measurement screen
+  if (state.selectedLandfill) {
+    renderVentDropdown();
+    updateMapMarkers();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+  // Load Firebase data first, then init app
+  await loadAllFromFirebase();
+  // Rebuild LANDFILLS with fresh Firebase data
+  // Re-run loadCustomLandfills to pick up Firebase cache
+  const customLandfillsFromFB = loadCustomLandfills();
+  // Replace custom entries in LANDFILLS (keep built-ins, replace custom tail)
+  const builtinCount = LANDFILLS.filter(l => l.id <= 20).length;
+  LANDFILLS.splice(builtinCount);
+  customLandfillsFromFB.forEach(l => LANDFILLS.push(l));
+  // Reload vents and coordinates with Firebase data
+  VENTS_BY_LANDFILL = getVentsByLandfill();
+  VENT_COORDINATES = getVentCoordinates();
+  applyCustomLandfillData();
+  window.state = state;
+  window.LANDFILLS = LANDFILLS;
+  initApp();
+});
+
+// === VREMENSKA PROGNOZA ===
+(function() {
+  // Popuni dropdown
+  function initForecastDropdown() {
+    var sel = document.getElementById('forecast-location-select');
+    if (!sel || sel.options.length > 1) return;
+    LANDFILLS.forEach(function(l) {
+      var opt = document.createElement('option');
+      opt.value = l.id;
+      opt.textContent = l.name;
+      sel.appendChild(opt);
+    });
+    var last = localStorage.getItem('forecast_last_landfill');
+    if (last) sel.value = last;
+    sel.addEventListener('change', function() {
+      localStorage.setItem('forecast_last_landfill', this.value);
+    });
+  }
+
+  // WMO code → emoji + opis
+  function wmoInfo(code) {
+    var map = {
+      0:{icon:'☀️',desc:'Vedro'},1:{icon:'🌤️',desc:'Pretežno vedro'},
+      2:{icon:'⛅',desc:'Djelomično oblačno'},3:{icon:'☁️',desc:'Oblačno'},
+      45:{icon:'🌫️',desc:'Magla'},48:{icon:'🌫️',desc:'Magla s injom'},
+      51:{icon:'🌦️',desc:'Slaba rosulja'},53:{icon:'🌦️',desc:'Umjerena rosulja'},
+      55:{icon:'🌧️',desc:'Jaka rosulja'},61:{icon:'🌧️',desc:'Slaba kiša'},
+      63:{icon:'🌧️',desc:'Umjerena kiša'},65:{icon:'🌧️',desc:'Jaka kiša'},
+      71:{icon:'🌨️',desc:'Slabi snijeg'},73:{icon:'🌨️',desc:'Umjeren snijeg'},
+      75:{icon:'❄️',desc:'Jak snijeg'},77:{icon:'🌨️',desc:'Snježne pahulje'},
+      80:{icon:'🌦️',desc:'Slabi pljuskovi'},81:{icon:'🌧️',desc:'Umjereni pljuskovi'},
+      82:{icon:'⛈️',desc:'Jaki pljuskovi'},85:{icon:'🌨️',desc:'Snježni pljuskovi'},
+      86:{icon:'❄️',desc:'Jaki snježni pljuskovi'},95:{icon:'⛈️',desc:'Grmljavina'},
+      96:{icon:'⛈️',desc:'Grmljavina s tučom'},99:{icon:'⛈️',desc:'Jaka grmljavina s tučom'}
+    };
+    return map[code] || {icon:'🌡️',desc:'Nepoznato'};
+  }
+  function isRainCode(code) {
+    return [51,53,55,61,63,65,71,73,75,77,80,81,82,85,86,95,96,99].indexOf(code) >= 0;
+  }
+  function dayName(dateStr, short) {
+    var d = new Date(dateStr);
+    var days = short ? ['Ned','Pon','Uto','Sri','Čet','Pet','Sub']
+                     : ['Nedjelja','Ponedjeljak','Utorak','Srijeda','Četvrtak','Petak','Subota'];
+    var today = new Date(); today.setHours(0,0,0,0);
+    var target = new Date(dateStr); target.setHours(0,0,0,0);
+    var diff = (target - today) / 86400000;
+    if (diff === 0) return 'Danas';
+    if (diff === 1) return 'Sutra';
+    return days[d.getDay()] + (short ? '' : ' ' + d.getDate() + '.' + (d.getMonth()+1) + '.');
+  }
+  function windDir(deg) {
+    var dirs = ['S','SSI','SI','ISI','I','IJS','JI','JJI','J','JJZ','JZ','ZJZ','Z','ZSZ','SZ','SSZ'];
+    return dirs[Math.round(deg/22.5)%16];
+  }
+
+  var _fcData = null;
+  var _fcLandfill = null;
+
+  window.loadForecast = function() {
+    var id = parseInt(document.getElementById('forecast-location-select').value);
+    if (!id) { alert('Odaberi odlagalište!'); return; }
+    var lf = LANDFILLS.find(function(l){ return l.id === id; });
+    if (!lf) return;
+    _fcLandfill = lf;
+
+    document.getElementById('forecast-loading').style.display = 'block';
+    document.getElementById('forecast-rain-warning').style.display = 'none';
+    document.getElementById('forecast-summary-strip').style.display = 'none';
+    document.getElementById('forecast-detail-panel').innerHTML = '';
+
+    var url = 'https://api.open-meteo.com/v1/forecast' +
+      '?latitude=' + lf.lat + '&longitude=' + lf.lon +
+      '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,' +
+      'precipitation_probability_max,windspeed_10m_max,windgusts_10m_max,' +
+      'winddirection_10m_dominant,sunrise,sunset' +
+      '&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,' +
+      'windspeed_10m,winddirection_10m,relativehumidity_2m' +
+      '&timezone=Europe%2FBelgrade&forecast_days=7';
+
+    fetch(url)
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        document.getElementById('forecast-loading').style.display = 'none';
+        _fcData = data;
+        renderFcSummary(data);
+        renderFcRainWarning(data);
+        renderFcDay(data, 0);
+      })
+      .catch(function(e) {
+        document.getElementById('forecast-loading').style.display = 'none';
+        alert('Greška: ' + e.message + '\nProvjeri internet vezu.');
+      });
+  };
+
+  function renderFcSummary(data) {
+    var strip = document.getElementById('forecast-summary-strip');
+    strip.style.display = 'block';
+    strip.innerHTML = '<div class="forecast-sum-strip" id="forecast-sum-inner"></div>';
+    var inner = document.getElementById('forecast-sum-inner');
+
+    data.daily.time.forEach(function(date, i) {
+      var code = data.daily.weathercode[i];
+      var info = wmoInfo(code);
+      var tmax = Math.round(data.daily.temperature_2m_max[i]);
+      var tmin = Math.round(data.daily.temperature_2m_min[i]);
+      var rain = data.daily.precipitation_sum[i] || 0;
+      var prob = data.daily.precipitation_probability_max[i] || 0;
+      var hasR = isRainCode(code) || prob >= 40;
+
+      var card = document.createElement('div');
+      card.className = 'fc-sum-card' + (i===0?' active':'') + (hasR?' rain-day':'');
+      card.innerHTML =
+        '<div class="fsc-day">' + dayName(date,true) + '</div>' +
+        '<div class="fsc-icon">' + info.icon + '</div>' +
+        '<div class="fsc-temp">' + tmax + '°/' + tmin + '°</div>' +
+        (rain>0 ? '<div class="fsc-rain">💧' + rain.toFixed(1) + 'mm</div>' : '<div class="fsc-rain">&nbsp;</div>');
+      (function(idx){ card.addEventListener('click', function(){
+        document.querySelectorAll('.fc-sum-card').forEach(function(c){c.classList.remove('active');});
+        card.classList.add('active');
+        renderFcDay(data, idx);
+      }); })(i);
+      inner.appendChild(card);
+    });
+  }
+
+  function renderFcRainWarning(data) {
+    var banner = document.getElementById('forecast-rain-warning');
+    var rainDays = [];
+    for (var i=0; i<Math.min(3, data.daily.time.length); i++) {
+      var c = data.daily.weathercode[i];
+      var p = data.daily.precipitation_probability_max[i] || 0;
+      var r = data.daily.precipitation_sum[i] || 0;
+      if (isRainCode(c) || p >= 40) {
+        rainDays.push({day: dayName(data.daily.time[i],false), prob:p, rain:r, code:c});
+      }
+    }
+    if (rainDays.length === 0) {
+      banner.style.cssText = 'display:block;border-radius:10px;padding:14px 16px;margin-bottom:14px;background:linear-gradient(135deg,#1b5e20,#2e7d32);color:white;font-size:14px;';
+      banner.innerHTML = '<strong>✅ Povoljni uvjeti za mjerenje</strong><br>U naredna 3 dana nije predviđena kiša.';
+    } else {
+      var isToday = isRainCode(data.daily.weathercode[0]) || (data.daily.precipitation_probability_max[0]||0) >= 40;
+      banner.style.cssText = 'display:block;border-radius:10px;padding:14px 16px;margin-bottom:14px;color:white;font-size:14px;line-height:1.6;background:' + (isToday ? 'linear-gradient(135deg,#b71c1c,#c62828)' : 'linear-gradient(135deg,#e65100,#ef6c00)') + ';';
+      var lines = rainDays.map(function(d){
+        return '• ' + d.day + ': ' + wmoInfo(d.code).desc + ', ' + d.prob + '% vjerojatnost' + (d.rain>0?', '+d.rain.toFixed(1)+'mm':'');
+      });
+      banner.innerHTML = '<strong>' + (isToday?'🚫 Danas nije pogodno za mjerenje':'⚠️ Kiša u narednim danima') + '</strong><br>' +
+        lines.join('<br>') + '<br><em style="font-size:12px;opacity:0.85;">Mjerenje na deponiji nije preporučljivo za vrijeme kiše.</em>';
+    }
+  }
+
+  function estimateDryTime(data, dayIdx) {
+    var date    = data.daily.time[dayIdx];
+    var sunrise = (data.daily.sunrise[dayIdx]||'').slice(11,16);
+    var sunriseH = parseInt(sunrise.split(':')[0]) || 6;
+
+    // Prikupi sat-po-sat podatke za ovaj dan
+    var hours = [];
+    data.hourly.time.forEach(function(t, i) {
+      if (t.slice(0,10) !== date) return;
+      hours.push({
+        hour:    parseInt(t.slice(11,13)),
+        rain:    data.hourly.precipitation[i] || 0,
+        code:    data.hourly.weathercode[i],
+        temp:    data.hourly.temperature_2m[i] || 15,
+        humidity:data.hourly.relativehumidity_2m[i] || 70,
+        wind:    data.hourly.windspeed_10m[i] || 0,
+        prob:    data.hourly.precipitation_probability[i] || 0
+      });
+    });
+
+    // Ukupna kiša i zadnji sat s kišom
+    var totalRain = 0;
+    var lastRainHour = -1;
+    hours.forEach(function(h) {
+      if (h.rain > 0.1 || isRainCode(h.code)) {
+        totalRain += h.rain;
+        lastRainHour = h.hour;
+      }
+    });
+
+    // Ako nema kiše danas
+    if (totalRain < 0.5 && lastRainHour < 0) {
+      return '<div style="background:#e8f5e9;border:1px solid #c8e6c9;border-top:none;border-radius:0 0 10px 10px;padding:12px 16px;font-size:13px;color:#2e7d32;">' +
+        '<strong>🟢 Nema oborina</strong> — tlo je suho, mjerenje je moguće cijeli dan.' +
+        '</div>';
+    }
+
+    // ── Formula za sušenje tla ───────────────────────────────────────────
+    // Bazno: 1.5h na svakih 1mm kiše
+    // Temperatura: svakih +5°C iznad 15°C = 15% brže sušenje
+    // Vlažnost: svakih +10% iznad 60% = 10% sporije sušenje
+    // Vjetar: svakih 10 km/h = 10% brže sušenje
+    // Noć (bez sunca): 60% sporije sušenje
+    // Min. čekanje: 30min nakon zadnje kiše
+
+    // Uzmi uvjete u satu nakon zadnje kiše
+    var condHour = hours.find(function(h){ return h.hour === lastRainHour + 1; }) ||
+                   hours.find(function(h){ return h.hour === lastRainHour; }) ||
+                   { temp:15, humidity:70, wind:5 };
+
+    var temp     = condHour.temp;
+    var humidity = condHour.humidity;
+    var wind     = condHour.wind;
+
+    // Bazno sušenje (sati)
+    var baseDry = totalRain * 1.5;
+
+    // Koeficijent temperature (referenca 15°C)
+    var tempFactor = 1 - Math.max(0, (temp - 15) / 5) * 0.15;
+    tempFactor = Math.max(0.4, tempFactor); // min 40% od baze
+
+    // Koeficijent vlažnosti
+    var humFactor = 1 + Math.max(0, (humidity - 60) / 10) * 0.10;
+    humFactor = Math.min(2.0, humFactor);
+
+    // Koeficijent vjetra
+    var windFactor = 1 - Math.min(0.4, wind / 10 * 0.10);
+
+    // Noćni koeficijent - ako je zadnja kiša bila noću i sunce tek izlazi
+    var nightFactor = (lastRainHour < sunriseH) ? 1.6 : 1.0;
+
+    var dryHours = baseDry * tempFactor * humFactor * windFactor * nightFactor;
+    dryHours = Math.max(0.5, dryHours); // minimum 30min
+
+    // Sat kada tlo bude suho = zadnja kiša + dryHours + 0.5h (sigurnosni buffer)
+    var readyTime = lastRainHour + dryHours + 0.5;
+    // Ne može biti ranije od izlaska sunca + 1h
+    if (lastRainHour < sunriseH) {
+      readyTime = Math.max(readyTime, sunriseH + 1);
+    }
+    readyTime = Math.round(readyTime);
+
+    var readyH   = Math.floor(readyTime);
+    var readyMin = Math.round((readyTime - readyH) * 60);
+    if (readyH >= 24) {
+      return '<div style="background:#fff3e0;border:1px solid #ffe0b2;border-top:none;border-radius:0 0 10px 10px;padding:12px 16px;font-size:13px;color:#e65100;">' +
+        '<strong>🟡 Tlo neće biti suho danas</strong> — previše oborina (' + totalRain.toFixed(1) + ' mm). ' +
+        'Preporučuje se mjerenje sljedeći dan.' +
+        '</div>';
+    }
+
+    var readyStr = String(readyH).padStart(2,'0') + ':' + String(readyMin).padStart(2,'0');
+
+    // Bojas ovisno o vremenu čekanja
+    var colour = readyH < 10 ? '#1b5e20' : readyH < 14 ? '#33691e' : '#e65100';
+    var bgCol  = readyH < 10 ? '#e8f5e9' : readyH < 14 ? '#f1f8e9' : '#fff3e0';
+    var border = readyH < 10 ? '#c8e6c9' : readyH < 14 ? '#dcedc8' : '#ffe0b2';
+    var icon   = readyH < 10 ? '🟢' : readyH < 14 ? '🟡' : '🟠';
+
+    // Faktori za prikaz
+    var factors = [];
+    if (temp > 20)      factors.push('temp. ' + Math.round(temp) + '°C ubrzava sušenje');
+    if (humidity > 75)  factors.push('visoka vlažnost ' + Math.round(humidity) + '% usporava sušenje');
+    if (wind > 15)      factors.push('vjetar ' + Math.round(wind) + ' km/h ubrzava sušenje');
+    if (lastRainHour < sunriseH) factors.push('kiša noću — sušenje bez sunca sporije');
+
+    return '<div style="background:' + bgCol + ';border:1px solid ' + border + ';border-top:none;border-radius:0 0 10px 10px;padding:14px 16px;font-size:13px;color:' + colour + ';">' +
+      '<div style="font-size:15px;font-weight:700;margin-bottom:8px;">' + icon + ' Procjena suhog tla: <strong>' + readyStr + 'h</strong></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:12px;margin-bottom:8px;color:#555;">' +
+        '<div>💧 Ukupno kiše: <strong>' + totalRain.toFixed(1) + ' mm</strong></div>' +
+        '<div>🕐 Zadnja kiša: <strong>' + String(lastRainHour).padStart(2,'0') + ':00h</strong></div>' +
+        '<div>🌡️ Temp.: <strong>' + Math.round(temp) + '°C</strong></div>' +
+        '<div>💧 Vlažnost: <strong>' + Math.round(humidity) + '%</strong></div>' +
+        '<div>💨 Vjetar: <strong>' + Math.round(wind) + ' km/h</strong></div>' +
+        '<div>🌅 Izlazak sunca: <strong>' + sunrise + 'h</strong></div>' +
+      '</div>' +
+      (factors.length ? '<div style="font-size:11px;color:#777;font-style:italic;">📊 ' + factors.join(' · ') + '</div>' : '') +
+      '<div style="margin-top:8px;font-size:12px;font-style:italic;opacity:0.8;">⚠️ Procjena je orijentacijska — stvarno stanje tla ovisi o tipu tla, nagibu i vegetaciji.</div>' +
+    '</div>';
+  }
+
+  function renderFcDay(data, dayIdx) {
+    var panel = document.getElementById('forecast-detail-panel');
+    panel.innerHTML = '';
+    var date   = data.daily.time[dayIdx];
+    var code   = data.daily.weathercode[dayIdx];
+    var info   = wmoInfo(code);
+    var tmax   = Math.round(data.daily.temperature_2m_max[dayIdx]);
+    var tmin   = Math.round(data.daily.temperature_2m_min[dayIdx]);
+    var rain   = (data.daily.precipitation_sum[dayIdx]||0).toFixed(1);
+    var prob   = data.daily.precipitation_probability_max[dayIdx]||0;
+    var wind   = Math.round(data.daily.windspeed_10m_max[dayIdx]);
+    var gust   = Math.round(data.daily.windgusts_10m_max[dayIdx]);
+    var wdir   = windDir(data.daily.winddirection_10m_dominant[dayIdx]);
+    var sunrise = (data.daily.sunrise[dayIdx]||'').slice(11,16);
+    var sunset  = (data.daily.sunset[dayIdx]||'').slice(11,16);
+    var canMeasure = !isRainCode(code) && prob < 40;
+
+    // Header
+    var hdr = document.createElement('div');
+    hdr.className = 'fc-detail-header';
+    hdr.innerHTML =
+      '<div><div style="font-size:16px;font-weight:700;">' + info.icon + ' ' + dayName(date,false) + '</div>' +
+      '<div style="font-size:12px;opacity:0.85;margin-top:3px;">' + info.desc + ' — ' + _fcLandfill.name + '</div></div>' +
+      '<div style="text-align:right;"><div style="font-size:24px;font-weight:700;">' + tmax + '°C</div>' +
+      '<div style="font-size:12px;opacity:0.8;">min ' + tmin + '°C</div></div>';
+    panel.appendChild(hdr);
+
+    // Stats
+    var stats = [
+      {lbl:'🌧️ Oborine',val:rain,unit:'mm'},
+      {lbl:'☔ Vjerojatnost',val:prob,unit:'%'},
+      {lbl:'💨 Vjetar',val:wind+' '+wdir,unit:'km/h'},
+      {lbl:'💨 Udari',val:gust,unit:'km/h'},
+      {lbl:'🌅 Izlazak',val:sunrise,unit:'h'},
+      {lbl:'🌇 Zalazak',val:sunset,unit:'h'},
+    ];
+    var grid = document.createElement('div');
+    grid.className = 'fc-stats-grid';
+    stats.forEach(function(s) {
+      var item = document.createElement('div');
+      item.className = 'fc-stat';
+      item.innerHTML = '<div class="fst-lbl">' + s.lbl + '</div><div class="fst-val">' + s.val + ' <span class="fst-unit">' + s.unit + '</span></div>';
+      grid.appendChild(item);
+    });
+    panel.appendChild(grid);
+
+    // Mjerenje status
+    var ms = document.createElement('div');
+    ms.className = 'fc-mstatus';
+    ms.style.cssText += ';background:' + (canMeasure?'#e8f5e9':'#ffebee') + ';color:' + (canMeasure?'#2e7d32':'#c62828') + ';border-radius:0;';
+    ms.innerHTML = canMeasure ? '✅ Pogodan dan za mjerenje na terenu.' : '🚫 Nije pogodan za mjerenje — predviđena kiša.';
+    panel.appendChild(ms);
+
+    // Procjena sušenja tla
+    var dryEl = document.createElement('div');
+    dryEl.innerHTML = estimateDryTime(data, dayIdx);
+    panel.appendChild(dryEl);
+
+    // Sat po sat
+    var hTitle = document.createElement('div');
+    hTitle.className = 'fc-hourly-title';
+    hTitle.textContent = '⏱️ Prognoza sat po sat';
+    panel.appendChild(hTitle);
+
+    var hScroll = document.createElement('div');
+    hScroll.className = 'fc-hourly-scroll';
+    var hRow = document.createElement('div');
+    hRow.className = 'fc-hourly-row';
+
+    data.hourly.time.forEach(function(t, i) {
+      if (t.slice(0,10) !== date) return;
+      var hCode = data.hourly.weathercode[i];
+      var hInfo = wmoInfo(hCode);
+      var hTemp = Math.round(data.hourly.temperature_2m[i]);
+      var hRain = (data.hourly.precipitation[i]||0).toFixed(1);
+      var hProb = data.hourly.precipitation_probability[i]||0;
+      var hWind = Math.round(data.hourly.windspeed_10m[i]);
+      var hWdir = windDir(data.hourly.winddirection_10m[i]);
+      var hasR  = parseFloat(hRain)>0 || hProb>=40;
+
+      var card = document.createElement('div');
+      card.className = 'fc-hour-card' + (hasR?' has-rain':'');
+      card.innerHTML =
+        '<div class="fhc-time">' + t.slice(11,16) + '</div>' +
+        '<div class="fhc-icon">' + hInfo.icon + '</div>' +
+        '<div class="fhc-temp">' + hTemp + '°</div>' +
+        '<div class="fhc-prob">' + (hProb>0?'☔'+hProb+'%':'&nbsp;') + '</div>' +
+        '<div class="fhc-rain">' + (parseFloat(hRain)>0?'💧'+hRain:'&nbsp;') + '</div>' +
+        '<div class="fhc-wind">' + hWind + ' ' + hWdir + '</div>';
+      hRow.appendChild(card);
+    });
+    hScroll.appendChild(hRow);
+    panel.appendChild(hScroll);
+  }
+
+  // Event listener za gumb
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('go-to-forecast').addEventListener('click', function() {
+      showScreen('forecast-screen');
+      initForecastDropdown();
+    });
+  });
+})();
+
+// === COMPARISON WITH PREVIOUS MEASUREMENT ===
+function loadPreviousMeasurement(ventName) {
+  const allMeasurements = JSON.parse(localStorage.getItem('measurements') || '[]');
+  
+  // Find previous measurements for this landfill
+  const landfillMeasurements = allMeasurements.filter(m => 
+    m.landfill === state.currentLandfill && 
+    m.date !== state.currentMeasurement.date
+  ).sort((a, b) => new Date(b.date) - new Date(a.date));
+  
+  if (landfillMeasurements.length === 0) {
+    document.getElementById('comparison-panel').classList.remove('show');
+    return;
+  }
+  
+  // Find this vent in previous measurement
+  const prevMeasurement = landfillMeasurements[0];
+  const prevVent = prevMeasurement.vents.find(v => v.name === ventName);
+  
+  if (!prevVent || prevVent.status !== 'measured') {
+    document.getElementById('comparison-panel').classList.remove('show');
+    return;
+  }
+  
+  // Show comparison
+  const panel = document.getElementById('comparison-panel');
+  const dateEl = document.getElementById('comparison-date');
+  const gridEl = document.getElementById('comparison-grid');
+  
+  dateEl.textContent = new Date(prevMeasurement.date).toLocaleDateString('hr-HR');
+  
+  const fields = [
+    { id: 'ch4', label: 'CH₄', unit: '%', decimals: 2 },
+    { id: 'co2', label: 'CO₂', unit: '%', decimals: 2 },
+    { id: 'o2', label: 'O₂', unit: '%', decimals: 2 },
+    { id: 'h2', label: 'H₂', unit: 'ppm', decimals: 0 },
+    { id: 'h2s', label: 'H₂S', unit: 'ppm', decimals: 0 },
+    { id: 'vent-temp', label: 'Temp', unit: '°C', decimals: 1 }
+  ];
+  
+  gridEl.innerHTML = fields.map(field => {
+    const prevValue = prevVent[field.id === 'vent-temp' ? 'temp' : field.id];
+    const displayValue = prevValue !== undefined && prevValue !== null ? 
+      parseFloat(prevValue).toFixed(field.decimals) : '-';
+    
+    return `
+      <div class="comparison-item">
+        <div class="comparison-label">${field.label}</div>
+        <div class="comparison-value">${displayValue} ${field.unit}</div>
+      </div>
+    `;
+  }).join('');
+  
+  panel.classList.add('show');
+}
+
+// === AUTO-SAVE ===
+function autoSaveVentData() {
+  const name = document.getElementById('vent-name').value.trim();
+  if (!name) return;
+  
+  const index = parseInt(document.getElementById('vent-index').value);
+  if (index < 0) return;
+  
+  const status = document.querySelector('input[name="vent-status"]:checked').value;
+  const ch4 = document.getElementById('ch4').value.trim();
+  const co2 = document.getElementById('co2').value.trim();
+  const o2 = document.getElementById('o2').value.trim();
+  const h2 = document.getElementById('h2').value.trim();
+  const h2s = document.getElementById('h2s').value.trim();
+  const temp = document.getElementById('vent-temp').value.trim();
+  const note = document.getElementById('vent-note').value.trim();
+  
+  // Only auto-save if at least one field is filled
+  if (!ch4 && !co2 && !o2 && !h2 && !h2s && !temp && !note) return;
+  
+  const ventData = {
+    name: name,
+    status: status,
+    ch4: ch4 || '',
+    co2: co2 || '',
+    o2: o2 || '',
+    h2: h2 || '',
+    h2s: h2s || '',
+    temp: temp || '',
+    diameter: document.getElementById('vent-diameter') ? document.getElementById('vent-diameter').value.trim() : '',
+    note: note
+  };
+  
+  if (index >= 0 && index < state.currentMeasurement.vents.length) {
+    state.currentMeasurement.vents[index] = ventData;
+  } else {
+    state.currentMeasurement.vents.push(ventData);
+  }
+  
+  localStorage.setItem('tempMeasurement', JSON.stringify(state.currentMeasurement));
+  console.log('Auto-saved:', name);
+}
+
+// Add auto-save listeners to all input fields
+function initAutoSave() {
+  const fields = ['ch4', 'co2', 'o2', 'h2', 'h2s', 'vent-temp', 'vent-diameter', 'vent-note'];
+  fields.forEach(fieldId => {
+    const el = document.getElementById(fieldId);
+    if (el) {
+      el.addEventListener('blur', autoSaveVentData);
+    }
+  });
+  
+  document.querySelectorAll('input[name="vent-status"]').forEach(radio => {
+    radio.addEventListener('change', autoSaveVentData);
+  });
+}
+
+// === INTERACTIVE MAP WITH MARKERS ===
+// Koordinate odušnika za svako odlagalište (% od širine i visine slike)
+const BUILTIN_VENT_COORDINATES = {
+  1: {
+    "1": {x: 20.1, y: 81.1},
+    "2": {x: 27.1, y: 81},
+    "3": {x: 35.5, y: 81},
+    "4": {x: 42.7, y: 80.6},
+    "5": {x: 49.8, y: 80.6},
+    "6": {x: 50.2, y: 75.1},
+    "7": {x: 43.6, y: 76.3},
+    "8": {x: 35, y: 74.9},
+    "9": {x: 26.7, y: 76.6},
+    "10": {x: 20.6, y: 73.4},
+    "11": {x: 47, y: 65.8},
+    "12": {x: 45.4, y: 62.8},
+    "13": {x: 35.6, y: 72.7},
+    "14": {x: 43.8, y: 60.3},
+    "15": {x: 40.2, y: 57.2},
+    "16": {x: 35.5, y: 54.6},
+    "17": {x: 44.6, y: 41},
+    "18": {x: 44.1, y: 29.5},
+    "19": {x: 43.2, y: 23.7},
+    "20": {x: 32.9, y: 27.3},
+    "21": {x: 32.7, y: 35.6}
+  }, // Križevci ✅
+  2: {
+    "A1": {x: 4.1, y: 72.5},
+    "A2": {x: 8, y: 79.7},
+    "A4": {x: 23.5, y: 35.4},
+    "A6": {x: 94.1, y: 36},
+    "A7": {x: 88.6, y: 47.9},
+    "A8": {x: 80.8, y: 57.9},
+    "B3": {x: 9.2, y: 35.9},
+    "B5": {x: 85.4, y: 13.4},
+    "Z1": {x: 68.5, y: 35.2},
+    "Z2": {x: 69, y: 37.8},
+    "Z3": {x: 63, y: 37.7},
+    "Z4": {x: 57.5, y: 37.8},
+    "Z5": {x: 64.6, y: 35.8},
+    "Z6": {x: 7.1, y: 64.9},
+    "Z7": {x: 6.7, y: 75.5},
+    "Z8": {x: 14.4, y: 67.5},
+    "Z9": {x: 14.3, y: 73.7},
+    "Z10": {x: 23.1, y: 66.2},
+    "Z11": {x: 23.5, y: 74.2},
+    "Z12": {x: 30, y: 66.4},
+    "Z13": {x: 30.1, y: 74.3},
+    "Z14": {x: 43.5, y: 65.3},
+    "Z15": {x: 42.2, y: 75.3},
+    "Z16": {x: 49.4, y: 65.3},
+    "Z17": {x: 48.1, y: 74.6},
+    "Z18": {x: 56.6, y: 65.3},
+    "Z19": {x: 56.7, y: 73.3}
+  }, // Koprivnica ✅
+  3: {
+    "1-3": {x: 61.8, y: 36},
+    "2-2": {x: 49.2, y: 39.7},
+    "2-3": {x: 57.6, y: 43.8},
+    "2-4": {x: 65.6, y: 48.3},
+    "3-2": {x: 46.9, y: 49},
+    "3-3": {x: 53.7, y: 51.9},
+    "3-4": {x: 59.5, y: 56.9},
+    "4-2": {x: 41.4, y: 56.2},
+    "4-3": {x: 48.9, y: 60.6},
+    "4-4": {x: 54.3, y: 63.3},
+    "5-2": {x: 39.8, y: 64.4},
+    "5-3": {x: 44.1, y: 68.1},
+    "5-4": {x: 51.9, y: 70.1},
+    "6-2": {x: 33.6, y: 71.6},
+    "6-3": {x: 39.7, y: 75.8},
+    "6-4": {x: 45.1, y: 78.1},
+    "10-1": {x: 20.6, y: 59.3},
+    "10-2": {x: 23.2, y: 54.8},
+    "10-3": {x: 26.1, y: 50.3},
+    "10-4": {x: 28.3, y: 45.3},
+    "10-5": {x: 31.2, y: 41.1},
+    "9-1": {x: 15.6, y: 56.4},
+    "9-2": {x: 17.8, y: 51.3},
+    "9-3": {x: 20.9, y: 47.4},
+    "9-4": {x: 23.5, y: 42.3},
+    "9-5": {x: 25.9, y: 37.4},
+    "8-1": {x: 10.4, y: 53.9},
+    "8-2": {x: 13, y: 49.1},
+    "8-3": {x: 16, y: 44.6},
+    "8-4": {x: 18.5, y: 40.3},
+    "8-5": {x: 21.7, y: 35.5}
+  }, // Virovitica ✅
+  4: {
+    "N1": {x: 47.9, y: 55.1},
+    "N2": {x: 41.3, y: 54.9},
+    "N3": {x: 40, y: 64},
+    "N4": {x: 48.3, y: 64}
+  }, // Grubišno Polje ✅
+  5: {
+    "10": {x: 57.5, y: 41.6},
+    "11": {x: 79.6, y: 39.8},
+    "12": {x: 71.7, y: 44.7},
+    "13": {x: 61, y: 47.9},
+    "14": {x: 51.3, y: 52.9},
+    "15": {x: 41.7, y: 56.7},
+    "16": {x: 30.1, y: 62.9},
+    "17": {x: 33.5, y: 70.5},
+    "18": {x: 43.1, y: 66.1},
+    "19": {x: 55.2, y: 61.3},
+    "20": {x: 66.3, y: 57.9},
+    "21": {x: 76.7, y: 54.5},
+    "22": {x: 84, y: 49.7},
+    "23": {x: 89.1, y: 69},
+    "24": {x: 92.1, y: 76.4},
+    "25": {x: 79.6, y: 68},
+    "26": {x: 84.8, y: 79},
+    "27": {x: 70.7, y: 72.3},
+    "28": {x: 75.9, y: 81.1},
+    "29": {x: 61.3, y: 77},
+    "30": {x: 67.4, y: 87.5},
+    "31": {x: 52.7, y: 82.9},
+    "32": {x: 57.6, y: 93.7},
+    "33": {x: 42, y: 86.7},
+    "34": {x: 46.6, y: 97.1},
+    "01": {x: 53.5, y: 31.3},
+    "02": {x: 46.6, y: 35},
+    "03": {x: 38.8, y: 38.9},
+    "04": {x: 30.9, y: 42},
+    "05": {x: 21.4, y: 46.1},
+    "06": {x: 26.1, y: 55.2},
+    "07": {x: 34.4, y: 50.5},
+    "08": {x: 41.4, y: 46.4},
+    "09": {x: 48.7, y: 43.1}
+  }, // Belišće ✅
+  6: {
+    "Z01": {x: 14.2, y: 42.2},
+    "Z02": {x: 21.7, y: 37.7},
+    "Z03": {x: 32.9, y: 33.9},
+    "Z04": {x: 46.6, y: 28},
+    "Z05": {x: 19.7, y: 52.3},
+    "Z06": {x: 26.6, y: 52.5},
+    "Z07": {x: 36.4, y: 45.6},
+    "Z08": {x: 50.9, y: 38.4},
+    "Z09": {x: 65.2, y: 34.4},
+    "Z10": {x: 24.5, y: 63.1},
+    "Z11": {x: 33.5, y: 61.8},
+    "Z12": {x: 42.2, y: 51.7},
+    "Z13": {x: 54.9, y: 48.3},
+    "Z14": {x: 69.2, y: 42.9},
+    "Z15": {x: 30.7, y: 79.7},
+    "Z16": {x: 41.9, y: 73.4},
+    "Z17": {x: 52.7, y: 69.4},
+    "Z18": {x: 66.2, y: 63.2},
+    "Z19": {x: 76.7, y: 57.4},
+    "Z20": {x: 67.7, y: 73.1},
+    "Z21": {x: 80.2, y: 67.4}
+  }, // Beli Manastir ✅
+  7: {
+    "1": {x: 27.1, y: 59.7},
+    "2": {x: 41.4, y: 69.1},
+    "6": {x: 61.4, y: 55.8},
+    "7": {x: 53.3, y: 47.4},
+    "8": {x: 44.5, y: 53.3},
+    "9": {x: 34.1, y: 59.1},
+    "10": {x: 51.5, y: 61.5}
+  }, // Pag ✅
+  8: {
+    "1": {x: 60, y: 73},
+    "2": {x: 70.9, y: 68.9},
+    "3": {x: 71.4, y: 61.7},
+    "4": {x: 63.6, y: 63.8},
+    "5": {x: 55.8, y: 59.4},
+    "6": {x: 55.5, y: 54},
+    "7": {x: 50.6, y: 46.6},
+    "8": {x: 46.5, y: 52.2},
+    "Z1": {x: 37.9, y: 51.6},
+    "Z2": {x: 41.1, y: 43.8},
+    "N01": {x: 30.9, y: 43.4},
+    "N02": {x: 24.8, y: 41.7},
+    "N03": {x: 19.1, y: 40.1},
+    "N04": {x: 17.4, y: 46.8},
+    "N05": {x: 22.9, y: 48},
+    "N06": {x: 28.9, y: 50.4},
+    "N07": {x: 26, y: 57.6},
+    "N08": {x: 19.7, y: 57.3},
+    "N09": {x: 14.2, y: 55.5},
+    "N10": {x: 12.2, y: 62.8},
+    "N11": {x: 18.5, y: 63.5}
+  }, // Otočac ✅
+  9: {
+    "BC29": {x: 46.3, y: 97.9},
+    "BC2": {x: 42.3, y: 90.2},
+    "BC30": {x: 25.1, y: 92.6},
+    "BC5": {x: 15.4, y: 89},
+    "BC23": {x: 73.3, y: 66},
+    "BC37": {x: 48.4, y: 76.2},
+    "BC9": {x: 56.3, y: 69.2},
+    "D2": {x: 57.8, y: 64.8},
+    "BC4": {x: 56.4, y: 60.2},
+    "BC28": {x: 46.3, y: 66},
+    "BC32": {x: 51, y: 19},
+    "BC33": {x: 50, y: 51.9},
+    "BC10": {x: 50.6, y: 35.3},
+    "BC15": {x: 48.7, y: 43.6},
+    "BC16": {x: 42, y: 45.9},
+    "BC14": {x: 43.5, y: 37.6},
+    "BC17": {x: 40.3, y: 36.1},
+    "BC34": {x: 29.5, y: 39.4},
+    "BC35": {x: 48.6, y: 7.9},
+    "BC36": {x: 56.4, y: 26.1},
+    "BC13": {x: 51.5, y: 25.3},
+    "BC18": {x: 41, y: 21.2},
+    "BC19": {x: 34.3, y: 22.5},
+    "BC11": {x: 45.5, y: 28},
+    "BC12": {x: 40.7, y: 29.9},
+    "BC38": {x: 35, y: 14.5},
+    "BC20": {x: 42.4, y: 11.9},
+    "BC21": {x: 49.5, y: 13.1},
+    "BC22": {x: 71.3, y: 36.2}
+  }, // Zadar ✅
+  10: {
+    "PB82": {x: 39.6, y: 85.2},
+    "PB83": {x: 33.9, y: 76},
+    "PB84": {x: 30.9, y: 68.8},
+    "PB85": {x: 28.6, y: 60.4},
+    "PB86": {x: 27.7, y: 52.6},
+    "PB87": {x: 29.2, y: 43.9},
+    "PB88": {x: 32.9, y: 36.3},
+    "PB89": {x: 37.1, y: 29.9},
+    "PB92": {x: 46, y: 83},
+    "PB93": {x: 42.6, y: 74.9},
+    "PB94": {x: 42.9, y: 67.1},
+    "PB95": {x: 43.4, y: 58.7},
+    "PB96": {x: 43.9, y: 50.7},
+    "PB97": {x: 45.7, y: 42.4},
+    "PB98": {x: 47.5, y: 34.5},
+    "PB100": {x: 55.6, y: 22.2},
+    "PB102": {x: 51.5, y: 74.5},
+    "PB103": {x: 51.5, y: 62.9},
+    "PB104": {x: 54.9, y: 53.5},
+    "PB105": {x: 57, y: 41.3},
+    "PB106": {x: 58.8, y: 31.5},
+    "PB108": {x: 63.3, y: 72.4},
+    "PB109": {x: 62.5, y: 58.3},
+    "PB110": {x: 66.9, y: 49.2},
+    "PB111": {x: 69.1, y: 38.7},
+    "PB114": {x: 73.5, y: 66.9},
+    "PB115": {x: 74.1, y: 56.7}
+  }, // Split ✅
+  11: {
+    "1": {x: 55.6, y: 49.2},
+    "2": {x: 44.5, y: 50.4},
+    "3": {x: 40.7, y: 62.6},
+    "4": {x: 39.4, y: 69.7},
+    "5": {x: 49.5, y: 72.1}
+  }, // Knin ✅
+  12: {
+    "1": {x: 58.5, y: 67.8},
+    "2": {x: 50.9, y: 83.2},
+    "3": {x: 44.5, y: 68.9},
+    "4": {x: 32.7, y: 74.1},
+    "5": {x: 40.8, y: 60.2},
+    "6": {x: 28.7, y: 55.8},
+    "7": {x: 30.4, y: 46.1}
+  }, // Obrovac ✅
+  13: {
+    "1": {x: 45.5, y: 72.3},
+    "2": {x: 42, y: 53.2},
+    "3": {x: 56.4, y: 42.3},
+    "4": {x: 42, y: 39.8},
+    "5": {x: 74.3, y: 62.4}
+  }, // Labin ✅
+  14: {
+    "11": {x: 19.6, y: 58.7},
+    "12": {x: 22, y: 58.4},
+    "13": {x: 29.5, y: 57.3},
+    "14": {x: 37, y: 56.6},
+    "15": {x: 44.3, y: 55.5},
+    "16": {x: 20.5, y: 67.2},
+    "17": {x: 26.1, y: 63.8},
+    "18": {x: 34.1, y: 63.2},
+    "19": {x: 41.1, y: 61.8},
+    "20": {x: 20, y: 74.5},
+    "21": {x: 26.9, y: 72.4},
+    "22": {x: 33.2, y: 70.3},
+    "23": {x: 39.3, y: 69.1},
+    "24": {x: 45.7, y: 68.1},
+    "25": {x: 24, y: 80.7},
+    "26": {x: 31.5, y: 79.9},
+    "27": {x: 39.1, y: 78.9},
+    "28": {x: 46.8, y: 77.7}
+  }, // Zaprešić ✅
+  15: {
+    "1": {x: 35.6, y: 67},
+    "2": {x: 30.1, y: 52.9},
+    "3": {x: 27.5, y: 41.1},
+    "4": {x: 16.7, y: 23.2},
+    "5": {x: 15.1, y: 12.8},
+    "6": {x: 13.3, y: 33.6},
+    "7": {x: 9.5, y: 24.9}
+  }, // Buzet ✅
+  16: {
+    "10": {x: 89.5, y: 36.7},
+    "11": {x: 45.7, y: 39.3},
+    "12": {x: 46, y: 62.6},
+    "13": {x: 60.4, y: 50.4},
+    "14": {x: 73.9, y: 39.9},
+    "01": {x: 53.3, y: 30.7},
+    "02": {x: 41.1, y: 28.3},
+    "03": {x: 24.9, y: 33.4},
+    "04": {x: 27.8, y: 43.2},
+    "05": {x: 22.5, y: 69.7},
+    "06": {x: 35.2, y: 80},
+    "07": {x: 55.8, y: 76.9},
+    "08": {x: 71.5, y: 67.2},
+    "09": {x: 84, y: 56.6}
+  }, // Cres ✅
+  17: {
+    "1": {x: 51.8, y: 59.3},
+    "2": {x: 54.1, y: 75.3}
+  }, // Bedekovčina ✅
+  18: {
+    "B-2": {x: 1.7, y: 63.3},
+    "B-3": {x: 16.8, y: 43.5},
+    "B-4": {x: 50.3, y: 42.7},
+    "B-5": {x: 19.4, y: 65.3},
+    "B-6": {x: 42.2, y: 77.7},
+    "B-7": {x: 48.7, y: 58.3},
+    "B-8": {x: 81.7, y: 62.6},
+    "B-9": {x: 73.5, y: 76.5},
+    "B-11": {x: 70.7, y: 63.9},
+    "B-12": {x: 64.9, y: 76.6},
+    "B-13": {x: 49.8, y: 65.9},
+    "B-14": {x: 42.8, y: 60.7},
+    "B-15": {x: 31.9, y: 65.6},
+    "B-16": {x: 31.6, y: 72.9},
+    "B-17": {x: 58.1, y: 66.3},
+    "B-18": {x: 41.7, y: 72.9},
+    "B-19": {x: 52.4, y: 78.1},
+    "B-20": {x: 33.2, y: 51.5},
+    "B-21": {x: 19.7, y: 74.2},
+    "B-23": {x: 34.1, y: 43.9},
+    "B-25": {x: 61.1, y: 59.6},
+    "B-26": {x: 24.6, y: 71.5},
+    "B-27": {x: 13, y: 61.4},
+    "B-28": {x: 22.5, y: 54.5}
+  }, // Rovinj ✅
+  19: {
+    "10": {x: 66.5, y: 44.7},
+    "11": {x: 75.4, y: 38.7},
+    "12": {x: 83.8, y: 33.6},
+    "13": {x: 69.2, y: 55.8},
+    "14": {x: 76.1, y: 50.3},
+    "15": {x: 83.7, y: 43.6},
+    "16": {x: 91.3, y: 36.8},
+    "01": {x: 42.9, y: 41.4},
+    "02": {x: 51.8, y: 34},
+    "03": {x: 58.8, y: 27.4},
+    "04": {x: 65.9, y: 22.6},
+    "05": {x: 51.9, y: 45.6},
+    "06": {x: 59.4, y: 39.2},
+    "07": {x: 66.5, y: 32.6},
+    "08": {x: 73.7, y: 25.7},
+    "09": {x: 59.7, y: 50.8},
+    "1N": {x: 41.2, y: 79.8},
+    "2N": {x: 34.2, y: 73.1},
+    "3N": {x: 29.1, y: 73.8}
+  }, // Pazin ✅
+  20: {
+    "Z01": {x: 57.9, y: 81.9},
+    "Z02": {x: 50.6, y: 71.9},
+    "Z03": {x: 41.7, y: 63.9},
+    "Z04": {x: 67.8, y: 72},
+    "Z05": {x: 60.2, y: 63.4},
+    "Z06": {x: 66.9, y: 56}
+  } // Biljane Donje ✅
+};
+
+// Function to get coordinates dynamically (reloads from localStorage each time)
+function getVentCoordinates() {
+  return {...BUILTIN_VENT_COORDINATES, ...loadCustomCoordinates()};
+}
+
+// Initialize VENT_COORDINATES
+let VENT_COORDINATES = getVentCoordinates();
+
+function initInteractiveMap() {
+  console.log('initInteractiveMap called');
+  const mapImg = document.getElementById('landfill-map');
+  console.log('mapImg:', mapImg);
+  if (!mapImg) return;
+  
+  let container = mapImg.parentElement;
+  
+  // Wrap image in container if not already
+  if (!container.classList.contains('map-container')) {
+    container = document.createElement('div');
+    container.className = 'map-container';
+    container.style.position = 'relative';
+    container.style.display = 'inline-block';
+    container.style.width = '100%';
+    mapImg.parentNode.insertBefore(container, mapImg);
+    container.appendChild(mapImg);
+    console.log('Container created');
+  }
+  
+  // Add click handler for zoom
+  mapImg.addEventListener('click', (e) => {
+    if (!e.target.classList.contains('vent-marker')) {
+      openImageZoom(e.target.src);
+    }
+  });
+  
+  updateMapMarkers();
+}
+
+function updateMapMarkers() {
+  console.log('updateMapMarkers called');
+  const mapImg = document.getElementById('landfill-map');
+  if (!mapImg) {
+    console.log('No mapImg found');
+    return;
+  }
+  
+  let container = mapImg.parentElement;
+  
+  // Make sure container has map-container class and proper positioning
+  if (!container.classList.contains('map-container')) {
+    console.log('Container does not have map-container class, wrapping...');
+    const newContainer = document.createElement('div');
+    newContainer.className = 'map-container';
+    newContainer.style.position = 'relative';
+    newContainer.style.display = 'inline-block';
+    newContainer.style.width = '100%';
+    mapImg.parentNode.insertBefore(newContainer, mapImg);
+    newContainer.appendChild(mapImg);
+    container = newContainer;
+  }
+  
+  console.log('Container:', container);
+  console.log('Container position:', window.getComputedStyle(container).position);
+  
+  // Remove existing markers
+  container.querySelectorAll('.vent-marker').forEach(m => m.remove());
+  
+  // Get current landfill
+  const landfillId = state.selectedLandfill?.id || state.currentMeasurement?.landfill?.id;
+  console.log('Current landfill ID:', landfillId);
+  if (!landfillId || !VENT_COORDINATES[landfillId]) {
+    console.log('No coordinates for landfill:', landfillId);
+    return;
+  }
+  
+  const coords = VENT_COORDINATES[landfillId];
+  const vents = VENTS_BY_LANDFILL[landfillId] || [];
+  console.log('Vents:', vents);
+  console.log('Coords:', coords);
+  
+  // Check if coordinates object is empty
+  if (Object.keys(coords).length === 0) {
+    console.log('Coordinates object is empty for landfill:', landfillId);
+    return;
+  }
+  
+  vents.forEach(ventName => {
+    if (!coords[ventName]) {
+      console.log('No coords for vent:', ventName);
+      return;
+    }
+    
+    console.log('Creating marker for:', ventName, coords[ventName]);
+    
+    const marker = document.createElement('div');
+    marker.className = 'vent-marker';
+    marker.style.position = 'absolute';
+    marker.style.left = coords[ventName].x + '%';
+    marker.style.top = coords[ventName].y + '%';
+    marker.textContent = ventName;
+    
+    // Check if vent is measured
+    const measuredVent = state.currentMeasurement?.vents.find(v => v.name === ventName);
+    if (measuredVent) {
+      if (measuredVent.status === 'measured') {
+        marker.classList.add('measured');
+      } else {
+        marker.classList.add('not-measurable');
+      }
+    }
+    
+    // Add label
+    const label = document.createElement('div');
+    label.className = 'vent-marker-label';
+    label.textContent = `Odušnik ${ventName}`;
+    marker.appendChild(label);
+    
+    // Click handler
+    marker.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openVentForm(ventName);
+    });
+    
+    container.appendChild(marker);
+    console.log('Marker added to container:', ventName);
+  });
+  
+  console.log('Total markers added:', container.querySelectorAll('.vent-marker').length);
+}
+
+function openVentForm(ventName) {
+  // Check if vent already exists
+  const existingIndex = state.currentMeasurement.vents.findIndex(v => v.name === ventName);
+  
+  if (existingIndex >= 0) {
+    // Edit existing
+    editVent(existingIndex);
+  } else {
+    // Create new
+    document.getElementById('vent-name').value = ventName;
+    document.getElementById('vent-index').value = -1;
+    document.getElementById('vent-form').reset();
+    document.getElementById('vent-name').value = ventName;
+    document.getElementById('vent-form').style.display = 'block';
+    updateInputSteps();
+    setTimeout(function(){ var f = document.getElementById('vent-form'); if(f) f.scrollIntoView({behavior:'smooth', block:'start'}); }, 80);
+    loadPreviousMeasurement(ventName);
+  }
+}
+
+// === IMAGE ZOOM FUNCTIONALITY ===
+function initImageZoom() {
+  const mapImg = document.getElementById('landfill-map');
+  if (!mapImg) return;
+  
+  // Create zoom modal
+  const modal = document.createElement('div');
+  modal.className = 'image-zoom-modal';
+  modal.id = 'image-zoom-modal';
+  modal.innerHTML = `
+    <span class="zoom-close" onclick="closeImageZoom()">&times;</span>
+    <div class="image-zoom-content" id="zoom-content-wrapper">
+    </div>
+    <div class="zoom-controls">
+      <button class="zoom-btn" onclick="zoomIn()">+</button>
+      <button class="zoom-btn" onclick="resetZoom()">Reset</button>
+      <button class="zoom-btn" onclick="zoomOut()">−</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  // Drag functionality
+  let isDragging = false;
+  let startX, startY, scrollLeft, scrollTop;
+  
+  const content = modal.querySelector('.image-zoom-content');
+  
+  content.addEventListener('mousedown', (e) => {
+    // Don't start dragging if clicking on a marker
+    if (e.target.classList.contains('vent-marker')) return;
+    
+    isDragging = true;
+    content.style.cursor = 'grabbing';
+    startX = e.clientX;
+    startY = e.clientY;
+    scrollLeft = content.scrollLeft;
+    scrollTop = content.scrollTop;
+  });
+  
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    if (content) content.style.cursor = 'grab';
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    content.scrollLeft = scrollLeft - dx;
+    content.scrollTop = scrollTop - dy;
+  });
+  
+  // Mouse wheel zoom
+  content.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const container = document.querySelector('#zoomed-map-container');
+    if (!container) return;
+    
+    // Get mouse position relative to container
+    const rect = content.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Get scroll position before zoom
+    const scrollX = content.scrollLeft;
+    const scrollY = content.scrollTop;
+    
+    // Calculate mouse position relative to content
+    const mouseX = x + scrollX;
+    const mouseY = y + scrollY;
+    
+    // Zoom
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    const newZoom = Math.max(0.5, Math.min(3, currentZoom + delta));
+    
+    if (newZoom !== currentZoom) {
+      const zoomRatio = newZoom / currentZoom;
+      currentZoom = newZoom;
+      container.style.transform = `scale(${currentZoom})`;
+      
+      // Adjust scroll to keep mouse position
+      content.scrollLeft = mouseX * zoomRatio - x;
+      content.scrollTop = mouseY * zoomRatio - y;
+    }
+  });
+}
+
+let currentZoom = 1;
+
+function openImageZoom(src) {
+  const modal = document.getElementById('image-zoom-modal');
+  const contentWrapper = modal.querySelector('#zoom-content-wrapper');
+  
+  // Get the original map container
+  const originalMapImg = document.getElementById('landfill-map');
+  const originalContainer = originalMapImg.parentElement;
+  
+  // Clone the entire map container with markers
+  const clonedContainer = originalContainer.cloneNode(true);
+  clonedContainer.id = 'zoomed-map-container';
+  
+  // Clear previous content
+  contentWrapper.innerHTML = '';
+  contentWrapper.appendChild(clonedContainer);
+  
+  // Set initial zoom
+  currentZoom = 1;
+  clonedContainer.style.transform = `scale(${currentZoom})`;
+  clonedContainer.style.transformOrigin = 'top left';
+  
+  // Add click handlers to cloned markers
+  const clonedMarkers = clonedContainer.querySelectorAll('.vent-marker');
+  clonedMarkers.forEach(marker => {
+    marker.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const ventName = marker.getAttribute('data-vent-name');
+      if (ventName) {
+        closeImageZoom();
+        openVentForm(ventName);
+      }
+    });
+  });
+  
+  modal.classList.add('active');
+}
+
+function closeImageZoom() {
+  const modal = document.getElementById('image-zoom-modal');
+  modal.classList.remove('active');
+  
+  // Clear content
+  const contentWrapper = modal.querySelector('#zoom-content-wrapper');
+  if (contentWrapper) {
+    contentWrapper.innerHTML = '';
+  }
+  
+  // Reset zoom
+  currentZoom = 1;
+}
+
+function zoomIn() {
+  currentZoom += 0.25;
+  if (currentZoom > 3) currentZoom = 3;
+  const container = document.querySelector('#zoomed-map-container');
+  if (container) {
+    container.style.transform = `scale(${currentZoom})`;
+  }
+}
+
+function zoomOut() {
+  currentZoom -= 0.25;
+  if (currentZoom < 0.5) currentZoom = 0.5;
+  const container = document.querySelector('#zoomed-map-container');
+  if (container) {
+    container.style.transform = `scale(${currentZoom})`;
+  }
+}
+
+function resetZoom() {
+  currentZoom = 1;
+  const container = document.querySelector('#zoomed-map-container');
+  const content = document.querySelector('#zoom-content-wrapper');
+  if (container) {
+    container.style.transform = `scale(${currentZoom})`;
+  }
+  if (content) {
+    content.scrollLeft = 0;
+    content.scrollTop = 0;
+  }
+}
+
+// Initialize all new features
+document.addEventListener('DOMContentLoaded', () => {
+  initAutoSave();
+  initImageZoom();
+  // Provjeri pending sync pri pokretanju - s malim delay da DOM bude spreman
+  setTimeout(function() {
+    if (_hasPendingSync()) _showSyncBanner(true);
+    if (navigator.onLine) _trySyncNow();
+  }, 1500);
+});
+
+</script>
+
+<div id="prev-measurement-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:5000;align-items:center;justify-content:center;">
+  <div style="background:var(--card-bg);border-radius:12px;padding:25px;max-width:420px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.3);max-height:80vh;overflow-y:auto;">
+    <div id="prev-measurement-content"></div>
+    <button type="button" onclick="closePrevMeasurementModal()" style="margin-top:15px;background:#666;">Zatvori</button>
+  </div>
+</div>
+<script src="prev_measurement.js"></script>
+<script>
+// === CONFIG LOADER ===
+(function(){
+  var t = localStorage.getItem('mop_config') || localStorage.getItem('mop_theme');
+  if (!t) return;
+  try {
+    var cfg = JSON.parse(t);
+    var r = document.documentElement.style;
+    var cssMap = {'--primary':'--primary','--primary-light':'--primary-light','--secondary':'--secondary','--bg-color':'--bg-color','--card-bg':'--card-bg','--input-bg':'--input-bg','--text-color':'--text-color','--label-color':'--label-color','--secondary-text':'--secondary-text','--input-border':'--input-border','--table-header-bg':'--table-header-bg','--table-border':'--table-border','--hover-bg':'--hover-bg','--card-shadow':'--card-shadow'};
+    Object.keys(cssMap).forEach(function(k){ if (cfg[k]) r.setProperty(k, cfg[k]); });
+    if (cfg['font-family']) { document.body.style.fontFamily = cfg['font-family']; }
+    if (cfg['font-size']) { document.body.style.fontSize = cfg['font-size']; }
+    if (cfg['max-width']) { var mw = document.querySelector('body'); if(mw) mw.style.setProperty('max-width', cfg['max-width']); }
+  } catch(e) {}
+})();
+</script>
+<script src="rename_vent.js"></script>
+<script src="chart_view.js"></script>
+
+<!-- PODSJETNIK MODAL -->
+<div id="reminder-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--card-bg,#fff);border-radius:14px;padding:24px;width:100%;max-width:380px;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+    <h3 style="margin:0 0 6px;color:#6a1b9a;font-size:17px;">🔔 Podsjetnik za mjerenje</h3>
+    <p id="reminder-landfill-name" style="font-size:13px;color:var(--secondary-text,#666);margin-bottom:16px;"></p>
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Datum sljedećeg mjerenja:</label>
+    <input type="date" id="reminder-date-input" style="width:100%;margin-bottom:12px;">
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Napomena (opcionalno):</label>
+    <input type="text" id="reminder-note-input" placeholder="npr. Provjeriti Z03 odušnik" style="width:100%;margin-bottom:16px;">
+    <div style="display:flex;gap:10px;">
+      <button onclick="saveReminder()" style="flex:1;background:#6a1b9a;">Spremi</button>
+      <button onclick="closeReminderModal()" style="flex:1;background:#6c757d;">Odustani</button>
+    </div>
+    <button id="reminder-delete-btn" onclick="deleteReminder()" style="margin-top:10px;background:#e74c3c;width:100%;display:none;">🗑️ Ukloni podsjetnik</button>
+  </div>
+</div>
+
+<script>
+// === PODSJETNICI ZA MJERENJE ===
+var _reminderIndex = -1;
+
+function getReminders() {
+  return JSON.parse(localStorage.getItem('mop_reminders') || '{}');
+}
+function saveReminders(obj) {
+  localStorage.setItem('mop_reminders', JSON.stringify(obj));
+}
+
+function setReminder(index) {
+  const measurements = loadMeasurements();
+  const m = measurements[index];
+  if (!m) return;
+  _reminderIndex = index;
+
+  const key = getReminderKey(m);
+  const reminders = getReminders();
+  const existing = reminders[key];
+
+  document.getElementById('reminder-landfill-name').textContent =
+    (m.landfill?.name || '') + ' — ' + (m.date || '');
+  document.getElementById('reminder-date-input').value = existing?.date || '';
+  document.getElementById('reminder-note-input').value = existing?.note || '';
+
+  // Prikaži gumb za brisanje samo ako već postoji podsjetnik
+  document.getElementById('reminder-delete-btn').style.display = existing ? 'block' : 'none';
+
+  const modal = document.getElementById('reminder-modal');
+  modal.style.display = 'flex';
+
+  // Postavi min datum na sutra
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('reminder-date-input').min = tomorrow.toISOString().split('T')[0];
+}
+
+function getReminderKey(m) {
+  return (m.landfill?.name || '') + '_' + (m.date || '');
+}
+
+function saveReminder() {
+  const date = document.getElementById('reminder-date-input').value;
+  if (!date) { alert('Odaberi datum!'); return; }
+
+  const measurements = loadMeasurements();
+  const m = measurements[_reminderIndex];
+  if (!m) return;
+
+  const reminders = getReminders();
+  const key = getReminderKey(m);
+  reminders[key] = {
+    date: date,
+    note: document.getElementById('reminder-note-input').value.trim(),
+    landfill: m.landfill?.name || '',
+    createdFrom: m.date || ''
+  };
+  saveReminders(reminders);
+  closeReminderModal();
+  updateHistoryList(); // Osvježi prikaz
+  checkRemindersOnLoad(); // Osvježi obavijesti
+  alert('✅ Podsjetnik postavljen za ' + formatDate(date) + '!');
+}
+
+function deleteReminder() {
+  const measurements = loadMeasurements();
+  const m = measurements[_reminderIndex];
+  if (!m) return;
+  const reminders = getReminders();
+  delete reminders[getReminderKey(m)];
+  saveReminders(reminders);
+  closeReminderModal();
+  updateHistoryList();
+  checkRemindersOnLoad();
+}
+
+function closeReminderModal() {
+  document.getElementById('reminder-modal').style.display = 'none';
+  _reminderIndex = -1;
+}
+
+// Zatvori klikom na pozadinu
+document.getElementById('reminder-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeReminderModal();
+});
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('hr-HR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+// Provjeri podsjetnik i prikaži badge u kartici
+function getReminderForMeasurement(m) {
+  const reminders = getReminders();
+  return reminders[getReminderKey(m)] || null;
+}
+
+// Provjeri podsjetnik pri učitavanju i prikaži u obavijestima
+function checkRemindersOnLoad() {
+  const reminders = getReminders();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const soon = new Date(); soon.setDate(soon.getDate() + 7); // 7 dana unaprijed
+
+  const due = [];
+  Object.values(reminders).forEach(function(r) {
+    const rDate = new Date(r.date);
+    rDate.setHours(0,0,0,0);
+    const diff = Math.round((rDate - today) / 86400000);
+    if (diff <= 7) {
+      due.push({ ...r, diff: diff, rDate: rDate });
+    }
+  });
+
+  if (due.length === 0) return;
+
+  // Prikaži banner na naslovnoj
+  let existing = document.getElementById('reminder-banner');
+  if (!existing) {
+    existing = document.createElement('div');
+    existing.id = 'reminder-banner';
+    existing.style.cssText = 'background:linear-gradient(135deg,#4a148c,#6a1b9a);color:white;border-radius:10px;padding:14px 16px;margin-bottom:14px;font-size:13px;line-height:1.6;';
+    const notifSection = document.getElementById('notifications-section');
+    if (notifSection) notifSection.parentNode.insertBefore(existing, notifSection);
+  }
+
+  const lines = due.map(function(r) {
+    const label = r.diff < 0 ? '🔴 Propušteno ' + Math.abs(r.diff) + ' dana'
+                : r.diff === 0 ? '🟡 Danas!'
+                : r.diff === 1 ? '🟡 Sutra'
+                : '🟢 Za ' + r.diff + ' dana';
+    return label + ' — <strong>' + r.landfill + '</strong>' +
+           ' (' + formatDate(r.date) + ')' +
+           (r.note ? ': ' + r.note : '');
+  }).join('<br>');
+
+  existing.innerHTML = '<div style="font-weight:700;font-size:14px;margin-bottom:6px;">🔔 Nadolazeća mjerenja</div>' + lines;
+}
+
+// Inicijalizacija pri učitavanju
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(checkRemindersOnLoad, 1500);
+});
+</script>
+</body>

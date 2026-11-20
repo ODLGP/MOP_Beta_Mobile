@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>MOP — Vremenska prognoza</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #1565c0;
+    --primary-dark: #0d47a1;
+    --rain: #1976d2;
+    --sun: #f9a825;
+    --cloud: #78909c;
+    --warn: #e65100;
+    --ok: #2e7d32;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --text: #1a1a2e;
+    --sub: #546e7a;
+    --border: #e0e0e0;
+  }
+  body.dark {
+    --bg: #0f1923;
+    --card: #1a2535;
+    --text: #e0e0e0;
+    --sub: #90a4ae;
+    --border: #2a3a4a;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 30px;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #0d47a1, #1976d2);
+    color: white;
+    padding: 16px 18px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .back-btn {
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  header h1 { font-size: 18px; font-weight: 700; }
+  header p  { font-size: 12px; opacity: 0.8; margin-top: 1px; }
+
+  /* ── Odabir odlagališta ── */
+  .location-bar {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .location-bar label { font-size: 13px; font-weight: 600; color: var(--sub); white-space: nowrap; }
+  .location-bar select {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .load-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .load-btn:active { opacity: 0.85; }
+
+  /* ── Loading ── */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--sub);
+    font-size: 15px;
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 4px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 14px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Upozorenje kiša ── */
+  .rain-warning {
+    display: none;
+    background: linear-gradient(135deg, #1565c0, #1976d2);
+    color: white;
+    margin: 14px 16px 0;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .rain-warning .rw-title { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+  .rain-warning.warn-orange { background: linear-gradient(135deg, #e65100, #ef6c00); }
+  .rain-warning.warn-red    { background: linear-gradient(135deg, #b71c1c, #c62828); }
+
+  /* ── Summary strip ── */
+  .summary-strip {
+    display: none;
+    gap: 10px;
+    padding: 14px 16px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .summary-strip::-webkit-scrollbar { display: none; }
+  .sum-card {
+    flex-shrink: 0;
+    background: var(--card);
+    border-radius: 12px;
+    padding: 12px 14px;
+    text-align: center;
+    min-width: 72px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  .sum-card.active { border-color: var(--primary); }
+  .sum-card.rain-day { border-color: #1976d2; }
+  .sum-card .sum-day  { font-size: 11px; color: var(--sub); font-weight: 600; margin-bottom: 4px; }
+  .sum-card .sum-icon { font-size: 22px; margin-bottom: 2px; }
+  .sum-card .sum-temp { font-size: 13px; font-weight: 700; }
+  .sum-card .sum-rain { font-size: 10px; color: var(--rain); margin-top: 2px; }
+
+  /* ── Detail panel ── */
+  .detail-panel {
+    display: none;
+    margin: 14px 16px 0;
+  }
+  .detail-header {
+    background: var(--primary);
+    color: white;
+    border-radius: 12px 12px 0 0;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .detail-header h2 { font-size: 16px; font-weight: 700; }
+  .detail-header .dh-sub { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+
+  .detail-stats {
+    background: var(--card);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 1px;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-bottom: none;
+  }
+  .ds-item {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ds-item .ds-lbl { font-size: 11px; color: var(--sub); font-weight: 600; margin-bottom: 3px; }
+  .ds-item .ds-val { font-size: 18px; font-weight: 700; }
+  .ds-item .ds-unit { font-size: 11px; color: var(--sub); }
+
+  /* ── Sat po sat ── */
+  .hourly-title {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: none;
+    padding: 12px 16px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sub);
+  }
+  .hourly-scroll {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    overflow-x: auto;
+    padding: 0 8px 12px;
+    scrollbar-width: thin;
+  }
+  .hourly-row {
+    display: flex;
+    gap: 6px;
+    min-width: max-content;
+    padding-top: 8px;
+  }
+  .hour-card {
+    flex-shrink: 0;
+    width: 68px;
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 8px 6px;
+    text-align: center;
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  .hour-card.has-rain { background: #e3f2fd; border-color: #90caf9; }
+  body.dark .hour-card.has-rain { background: #0d2a3f; border-color: #1976d2; }
+  .hc-time  { font-size: 11px; font-weight: 700; color: var(--sub); margin-bottom: 4px; }
+  .hc-icon  { font-size: 20px; margin-bottom: 2px; }
+  .hc-temp  { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .hc-rain  { font-size: 10px; color: var(--rain); font-weight: 600; }
+  .hc-wind  { font-size: 10px; color: var(--sub); margin-top: 2px; }
+  .hc-prob  { font-size: 10px; color: var(--rain); }
+
+  /* ── Empty state ── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--sub);
+  }
+  .empty-state .es-icon { font-size: 56px; margin-bottom: 14px; }
+  .empty-state h2 { font-size: 17px; margin-bottom: 6px; }
+  .empty-state p  { font-size: 13px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    header h1 { font-size: 15px; }
+    .location-bar { flex-direction: column; align-items: stretch; }
+    .location-bar select, .load-btn { width: 100%; }
+    .detail-stats { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <a href="index.html" class="back-btn">← Natrag</a>
+    <div>
+      <h1>⛅ Vremenska prognoza</h1>
+      <p>Prognoza za odlagalište — 7 dana</p>
+    </div>
+  </div>
+</header>
+
+<!-- Odabir lokacije -->
+<div class="location-bar">
+  <label>📍 Odlagalište:</label>
+  <select id="location-select">
+    <option value="">— Odaberi odlagalište —</option>
+  </select>
+  <button class="load-btn" onclick="loadForecast()">Prikaži prognozu</button>
+</div>
+
+<!-- Loading -->
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  Dohvaćam vremensku prognozu...
+</div>
+
+<!-- Rain warning -->
+<div class="rain-warning" id="rain-warning"></div>
+
+<!-- Summary strip (7 dana) -->
+<div class="summary-strip" id="summary-strip"></div>
+
+<!-- Detail panel -->
+<div class="detail-panel" id="detail-panel"></div>
+
+<!-- Empty state -->
+<div class="empty-state" id="empty-state">
+  <div class="es-icon">🌤️</div>
+  <h2>Odaberi odlagalište</h2>
+  <p>Odaberi lokaciju i klikni "Prikaži prognozu"<br>za detaljan vremenski izvještaj</p>
+</div>
+
+<script>
+// ── Odlagališta s koordinatama ──────────────────────────────────────────────
+var LANDFILLS = [
+  { id:1,  name: 'Odlagalište otpada Križevci',              lat: 46.0219, lon: 16.5425 },
+  { id:2,  name: 'Odlagalište otpada Koprivnica',            lat: 46.1636, lon: 16.8297 },
+  { id:3,  name: 'Odlagalište otpada Virovitica',            lat: 45.8319, lon: 17.3836 },
+  { id:4,  name: 'Odlagalište otpada Grubišno Polje',        lat: 45.6989, lon: 17.1753 },
+  { id:5,  name: 'Odlagalište otpada Belišće',               lat: 45.6806, lon: 18.4042 },
+  { id:6,  name: 'Odlagalište otpada Beli Manastir',         lat: 45.7697, lon: 18.6042 },
+  { id:7,  name: 'Odlagalište otpada Pag',                   lat: 44.4450, lon: 15.0597 },
+  { id:8,  name: 'Odlagalište otpada Otočac',                lat: 44.8697, lon: 15.2378 },
+  { id:9,  name: 'Odlagalište otpada Zadar - Diklo',         lat: 44.1194, lon: 15.2314 },
+  { id:10, name: 'Odlagalište otpada Split - Karepovac',     lat: 43.5081, lon: 16.4402 },
+  { id:11, name: 'Odlagalište otpada Knin - Mala Promina',   lat: 44.0406, lon: 16.1966 },
+  { id:12, name: 'Odlagalište otpada Kljakovača - Obrovac',  lat: 44.2036, lon: 15.6772 },
+  { id:13, name: 'Odlagalište otpada Cere - Labin',          lat: 45.0931, lon: 14.1197 },
+  { id:14, name: 'Odlagalište otpada Novi Dvori - Zaprešić', lat: 45.8564, lon: 15.8072 },
+  { id:15, name: 'Odlagalište otpada Griža - Buzet',         lat: 45.4094, lon: 13.9667 },
+  { id:16, name: 'Odlagalište otpada Pržić - Cres',          lat: 44.9611, lon: 14.4084 },
+  { id:17, name: 'Odlagalište otpada Bedekovčina',           lat: 46.0403, lon: 15.9942 },
+  { id:18, name: 'Odlagalište otpada Basilica - Rovinj',     lat: 45.0808, lon: 13.6386 },
+  { id:19, name: 'Odlagalište otpada Jelenčići V - Pazin',   lat: 45.2397, lon: 13.9364 },
+  { id:20, name: 'Odlagalište otpada Biljane Donje',         lat: 44.0528, lon: 15.8911 }
+];
+
+// ── Popuni dropdown ──────────────────────────────────────────────────────────
+var sel = document.getElementById('location-select');
+LANDFILLS.forEach(function(l) {
+  var opt = document.createElement('option');
+  opt.value = l.id;
+  opt.textContent = l.name;
+  sel.appendChild(opt);
+});
+
+// ── WMO weather code → emoji + opis ─────────────────────────────────────────
+function wmoInfo(code) {
+  var map = {
+    0:  { icon: '☀️',  desc: 'Vedro' },
+    1:  { icon: '🌤️', desc: 'Pretežno vedro' },
+    2:  { icon: '⛅',  desc: 'Djelomično oblačno' },
+    3:  { icon: '☁️',  desc: 'Oblačno' },
+    45: { icon: '🌫️', desc: 'Magla' },
+    48: { icon: '🌫️', desc: 'Magla s injom' },
+    51: { icon: '🌦️', desc: 'Slaba rosulja' },
+    53: { icon: '🌦️', desc: 'Umjerena rosulja' },
+    55: { icon: '🌧️', desc: 'Jaka rosulja' },
+    61: { icon: '🌧️', desc: 'Slaba kiša' },
+    63: { icon: '🌧️', desc: 'Umjerena kiša' },
+    65: { icon: '🌧️', desc: 'Jaka kiša' },
+    71: { icon: '🌨️', desc: 'Slabi snijeg' },
+    73: { icon: '🌨️', desc: 'Umjeren snijeg' },
+    75: { icon: '❄️',  desc: 'Jak snijeg' },
+    77: { icon: '🌨️', desc: 'Snježne pahulje' },
+    80: { icon: '🌦️', desc: 'Slabi pljuskovi' },
+    81: { icon: '🌧️', desc: 'Umjereni pljuskovi' },
+    82: { icon: '⛈️',  desc: 'Jaki pljuskovi' },
+    85: { icon: '🌨️', desc: 'Snježni pljuskovi' },
+    86: { icon: '❄️',  desc: 'Jaki snježni pljuskovi' },
+    95: { icon: '⛈️',  desc: 'Grmljavina' },
+    96: { icon: '⛈️',  desc: 'Grmljavina s tučom' },
+    99: { icon: '⛈️',  desc: 'Jaka grmljavina s tučom' }
+  };
+  return map[code] || { icon: '🌡️', desc: 'Nepoznato' };
+}
+
+function isRainCode(code) {
+  return [51,53,55,61,63,65,71,73,75,77,80,81,82,85,86,95,96,99].indexOf(code) >= 0;
+}
+
+function dayName(dateStr, short) {
+  var d = new Date(dateStr);
+  var days = short
+    ? ['Ned','Pon','Uto','Sri','Čet','Pet','Sub']
+    : ['Nedjelja','Ponedjeljak','Utorak','Srijeda','Četvrtak','Petak','Subota'];
+  var months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+  var today = new Date(); today.setHours(0,0,0,0);
+  var target = new Date(dateStr); target.setHours(0,0,0,0);
+  var diff = (target - today) / 86400000;
+  if (diff === 0) return 'Danas';
+  if (diff === 1) return 'Sutra';
+  return days[d.getDay()] + (short ? '' : ' ' + d.getDate() + '.' + months[d.getMonth()] + '.');
+}
+
+function windDir(deg) {
+  var dirs = ['S','SSI','SI','ISI','I','IJS','JI','JJI','J','JJZ','JZ','ZJZ','Z','ZSZ','SZ','SSZ'];
+  return dirs[Math.round(deg / 22.5) % 16];
+}
+
+// ── Globalni podaci ──────────────────────────────────────────────────────────
+var _forecastData = null;
+var _selectedLandfill = null;
+var _selectedDayIdx = 0;
+
+// ── Dohvati prognozu ─────────────────────────────────────────────────────────
+function loadForecast() {
+  var id = parseInt(document.getElementById('location-select').value);
+  if (!id) { alert('Odaberi odlagalište!'); return; }
+  var lf = LANDFILLS.find(function(l) { return l.id === id; });
+  if (!lf) return;
+  _selectedLandfill = lf;
+
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('summary-strip').style.display = 'none';
+  document.getElementById('detail-panel').style.display = 'none';
+  document.getElementById('rain-warning').style.display = 'none';
+
+  var url = 'https://api.open-meteo.com/v1/forecast' +
+    '?latitude=' + lf.lat +
+    '&longitude=' + lf.lon +
+    '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,windspeed_10m_max,windgusts_10m_max,winddirection_10m_dominant,sunrise,sunset' +
+    '&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,winddirection_10m,relativehumidity_2m' +
+    '&timezone=Europe%2FBelgrade' +
+    '&forecast_days=7';
+
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('loading').style.display = 'none';
+      _forecastData = data;
+      _selectedDayIdx = 0;
+      renderSummary(data);
+      renderRainWarning(data);
+      renderDay(data, 0);
+    })
+    .catch(function(e) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('empty-state').style.display = 'block';
+      document.getElementById('empty-state').innerHTML =
+        '<div class="es-icon">❌</div><h2>Greška pri dohvatu</h2><p>' + e.message + '<br>Provjeri internet vezu.</p>';
+    });
+}
+
+// ── Render summary strip ─────────────────────────────────────────────────────
+function renderSummary(data) {
+  var strip = document.getElementById('summary-strip');
+  strip.innerHTML = '';
+  strip.style.display = 'flex';
+
+  data.daily.time.forEach(function(date, i) {
+    var code  = data.daily.weathercode[i];
+    var info  = wmoInfo(code);
+    var tmax  = Math.round(data.daily.temperature_2m_max[i]);
+    var tmin  = Math.round(data.daily.temperature_2m_min[i]);
+    var rain  = data.daily.precipitation_sum[i] || 0;
+    var prob  = data.daily.precipitation_probability_max[i] || 0;
+    var hasR  = isRainCode(code) || prob >= 40;
+
+    var card = document.createElement('div');
+    card.className = 'sum-card' + (i === 0 ? ' active' : '') + (hasR ? ' rain-day' : '');
+    card.innerHTML =
+      '<div class="sum-day">' + dayName(date, true) + '</div>' +
+      '<div class="sum-icon">' + info.icon + '</div>' +
+      '<div class="sum-temp">' + tmax + '° / ' + tmin + '°</div>' +
+      (rain > 0 ? '<div class="sum-rain">💧 ' + rain.toFixed(1) + 'mm</div>' : '<div class="sum-rain">&nbsp;</div>');
+    card.addEventListener('click', function() {
+      document.querySelectorAll('.sum-card').forEach(function(c) { c.classList.remove('active'); });
+      card.classList.add('active');
+      _selectedDayIdx = i;
+      renderDay(data, i);
+    });
+    strip.appendChild(card);
+  });
+}
+
+// ── Render rain warning ───────────────────────────────────────────────────────
+function renderRainWarning(data) {
+  var banner = document.getElementById('rain-warning');
+  var today = data.daily.time[0];
+  var todayCode = data.daily.weathercode[0];
+  var todayProb = data.daily.precipitation_probability_max[0] || 0;
+  var todayRain = data.daily.precipitation_sum[0] || 0;
+
+  // Provjeri sljedeća 3 dana
+  var rainDays = [];
+  for (var i = 0; i < Math.min(3, data.daily.time.length); i++) {
+    var c = data.daily.weathercode[i];
+    var p = data.daily.precipitation_probability_max[i] || 0;
+    var r = data.daily.precipitation_sum[i] || 0;
+    if (isRainCode(c) || p >= 40) {
+      rainDays.push({ day: dayName(data.daily.time[i], false), prob: p, rain: r, code: c });
+    }
+  }
+
+  if (rainDays.length === 0) {
+    banner.style.display = 'block';
+    banner.className = 'rain-warning';
+    banner.innerHTML =
+      '<div class="rw-title">✅ Povoljni uvjeti za mjerenje</div>' +
+      'U naredna 3 dana nije predviđena kiša. Mjerenje je moguće provesti bez vremenskih ograničenja.';
+    banner.style.background = 'linear-gradient(135deg, #1b5e20, #2e7d32)';
+  } else {
+    var isToday = isRainCode(todayCode) || todayProb >= 40;
+    banner.className = 'rain-warning' + (isToday ? ' warn-red' : ' warn-orange');
+    banner.style.background = '';
+    var lines = rainDays.map(function(d) {
+      return '• ' + d.day + ': ' + wmoInfo(d.code).desc + ', ' + d.prob + '% vjerojatnost kiše' + (d.rain > 0 ? ', ' + d.rain.toFixed(1) + ' mm' : '');
+    });
+    banner.innerHTML =
+      '<div class="rw-title">' + (isToday ? '🚫 Danas nije pogodno za mjerenje' : '⚠️ Upozorenje — kiša u narednim danima') + '</div>' +
+      lines.join('<br>') +
+      '<br><br><em style="opacity:0.85;font-size:12px;">Mjerenje na deponiji nije preporučljivo za vrijeme kiše ili mokrog terena.</em>';
+    banner.style.display = 'block';
+  }
+}
+
+// ── Render detalji dana ───────────────────────────────────────────────────────
+function renderDay(data, dayIdx) {
+  var panel = document.getElementById('detail-panel');
+  panel.style.display = 'block';
+  panel.innerHTML = '';
+
+  var date   = data.daily.time[dayIdx];
+  var code   = data.daily.weathercode[dayIdx];
+  var info   = wmoInfo(code);
+  var tmax   = Math.round(data.daily.temperature_2m_max[dayIdx]);
+  var tmin   = Math.round(data.daily.temperature_2m_min[dayIdx]);
+  var rain   = (data.daily.precipitation_sum[dayIdx] || 0).toFixed(1);
+  var prob   = data.daily.precipitation_probability_max[dayIdx] || 0;
+  var wind   = Math.round(data.daily.windspeed_10m_max[dayIdx]);
+  var gust   = Math.round(data.daily.windgusts_10m_max[dayIdx]);
+  var wdir   = windDir(data.daily.winddirection_10m_dominant[dayIdx]);
+  var sunrise = (data.daily.sunrise[dayIdx] || '').slice(11,16);
+  var sunset  = (data.daily.sunset[dayIdx]  || '').slice(11,16);
+  var canMeasure = !isRainCode(code) && prob < 40;
+
+  // Header
+  var hdr = document.createElement('div');
+  hdr.className = 'detail-header';
+  hdr.innerHTML =
+    '<div>' +
+      '<h2>' + info.icon + ' ' + dayName(date, false) + '</h2>' +
+      '<div class="dh-sub">' + info.desc + ' — ' + _selectedLandfill.name + '</div>' +
+    '</div>' +
+    '<div style="text-align:right;">' +
+      '<div style="font-size:22px;font-weight:700;">' + tmax + '°C</div>' +
+      '<div style="font-size:13px;opacity:0.8;">min ' + tmin + '°C</div>' +
+    '</div>';
+  panel.appendChild(hdr);
+
+  // Stats grid
+  var stats = [
+    { lbl: '🌧️ Oborine',      val: rain,    unit: 'mm' },
+    { lbl: '☔ Vjerojatnost',  val: prob,     unit: '%' },
+    { lbl: '💨 Vjetar',        val: wind + ' ' + wdir, unit: 'km/h' },
+    { lbl: '💨 Udari vjetra',  val: gust,    unit: 'km/h' },
+    { lbl: '🌅 Izlazak sunca', val: sunrise, unit: 'h' },
+    { lbl: '🌇 Zalazak sunca', val: sunset,  unit: 'h' },
+    { lbl: '🌡️ Maks. temp.',   val: tmax,    unit: '°C' },
+    { lbl: '🌡️ Min. temp.',    val: tmin,    unit: '°C' },
+  ];
+  var grid = document.createElement('div');
+  grid.className = 'detail-stats';
+  stats.forEach(function(s) {
+    var item = document.createElement('div');
+    item.className = 'ds-item';
+    item.innerHTML =
+      '<div class="ds-lbl">' + s.lbl + '</div>' +
+      '<div class="ds-val">' + s.val + ' <span class="ds-unit">' + s.unit + '</span></div>';
+    grid.appendChild(item);
+  });
+  panel.appendChild(grid);
+
+  // Mjerenje status
+  var mStatus = document.createElement('div');
+  mStatus.style.cssText = 'padding:12px 16px;background:' + (canMeasure ? '#e8f5e9' : '#ffebee') + ';border:1px solid var(--border);border-top:none;font-size:13px;font-weight:600;color:' + (canMeasure ? '#2e7d32' : '#c62828') + ';';
+  mStatus.innerHTML = canMeasure
+    ? '✅ Ovaj dan je pogodan za mjerenje na terenu.'
+    : '🚫 Ovaj dan nije pogodan za mjerenje — predviđena kiša ili oborine.';
+  panel.appendChild(mStatus);
+
+  // Sat po sat naslov
+  var hTitle = document.createElement('div');
+  hTitle.className = 'hourly-title';
+  hTitle.textContent = '⏱️ Prognoza sat po sat';
+  panel.appendChild(hTitle);
+
+  // Sat po sat scroll
+  var hScroll = document.createElement('div');
+  hScroll.className = 'hourly-scroll';
+  var hRow = document.createElement('div');
+  hRow.className = 'hourly-row';
+
+  // Filtriraj sate za odabrani dan
+  var dayPrefix = date;
+  data.hourly.time.forEach(function(t, i) {
+    if (t.slice(0, 10) !== dayPrefix) return;
+    var hour  = t.slice(11, 16);
+    var hCode = data.hourly.weathercode[i];
+    var hInfo = wmoInfo(hCode);
+    var hTemp = Math.round(data.hourly.temperature_2m[i]);
+    var hRain = (data.hourly.precipitation[i] || 0).toFixed(1);
+    var hProb = data.hourly.precipitation_probability[i] || 0;
+    var hWind = Math.round(data.hourly.windspeed_10m[i]);
+    var hWdir = windDir(data.hourly.winddirection_10m[i]);
+    var hHum  = data.hourly.relativehumidity_2m[i] || 0;
+    var hasR  = parseFloat(hRain) > 0 || hProb >= 40;
+
+    var card = document.createElement('div');
+    card.className = 'hour-card' + (hasR ? ' has-rain' : '');
+    card.innerHTML =
+      '<div class="hc-time">' + hour + '</div>' +
+      '<div class="hc-icon">' + hInfo.icon + '</div>' +
+      '<div class="hc-temp">' + hTemp + '°</div>' +
+      (hProb > 0 ? '<div class="hc-prob">☔' + hProb + '%</div>' : '<div class="hc-prob">&nbsp;</div>') +
+      (parseFloat(hRain) > 0 ? '<div class="hc-rain">💧' + hRain + 'mm</div>' : '<div class="hc-rain">&nbsp;</div>') +
+      '<div class="hc-wind">' + hWind + ' ' + hWdir + '</div>';
+    hRow.appendChild(card);
+  });
+
+  hScroll.appendChild(hRow);
+  panel.appendChild(hScroll);
+
+  // Scroll na vrh detail panela
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Dark mode ────────────────────────────────────────────────────────────────
+(function() {
+  var saved = localStorage.getItem('darkMode');
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (saved === '1' || (saved === null && prefersDark)) {
+    document.body.classList.add('dark');
+  }
+})();
+
+// ── Auto-load last selected ──────────────────────────────────────────────────
+(function() {
+  var last = localStorage.getItem('forecast_last_landfill');
+  if (last) {
+    document.getElementById('location-select').value = last;
+  }
+  document.getElementById('location-select').addEventListener('change', function() {
+    localStorage.setItem('forecast_last_landfill', this.value);
+  });
+})();
+</script>
+</body>
+</html>
