@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="hr">
 <head>
 <meta charset="utf-8">
@@ -613,7 +613,7 @@ body.dark .bottom-nav{background:var(--card);}
           <div class="lg"><div class="dot" style="background:#9e9e9e"></div><span>Ne može se izmjeriti</span></div>
         </div>
         <div class="map-progress" id="map-progress"></div>
-        <button id="add-vent-btn" class="btn-secondary">＋ Dodaj odušnik</button>
+        <button id="add-vent-btn" class="btn-secondary">📍 Odaberi odušnik</button>
         <div class="success-message" id="success-message">Mjerenje uspješno spremljeno! Podaci su pohranjeni.</div>
         <div class="warning-message" id="missing-vents-warning" style="display:none;"></div>
         <div class="vent-table-container">
@@ -629,6 +629,15 @@ body.dark .bottom-nav{background:var(--card);}
     <!-- ===== MORE TAB ===== -->
     <section id="view-more" class="tab-view">
       <h2 class="page-title">Više</h2>
+      <!-- Banner "Vrati se na mjerenje" — prikazuje se samo kada je mjerenje aktivno -->
+      <div id="more-back-to-measurement" style="display:none;background:linear-gradient(135deg,#1b5e20,#2e7d32);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:none;align-items:center;gap:12px;cursor:pointer;" onclick="navTo('new')">
+        <svg viewBox="0 0 24 24" fill="white" width="24" height="24" style="flex-shrink:0;"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        <div style="flex:1;">
+          <div style="color:white;font-weight:700;font-size:15px;">Vrati se na mjerenje</div>
+          <div id="more-back-landfill" style="color:rgba(255,255,255,0.8);font-size:12px;margin-top:2px;"></div>
+        </div>
+        <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+      </div>
       <div class="more-list">
         <div class="more-item" onclick="window.open('admin.html','_blank')">
           <span class="more-icon">⚙️</span><span class="more-label">Admin panel</span><span class="more-arrow">›</span>
@@ -1107,12 +1116,58 @@ function showNewStep(step){
   window.scrollTo(0,0);
   if (step === 'landfill') initLandfillGrid();
 }
+function isMeasurementActive() {
+  return !!(state.currentMeasurement && state.currentMeasurement.landfill);
+}
+
+function updateNavCenterBtn() {
+  // Gumb u nav baru ostaje uvijek "+" — ne mijenjamo ga više
+}
+
 function navTo(tab){
-  if (tab === 'new') { startNewMeasurement(); return; }
+  // Više — uvijek slobodan pristup, bez upozorenja
+  if (tab === 'more') {
+    showAppScreen('view-more');
+    updateMoreBackBanner();
+    return;
+  }
+  // Ostali tabovi — upozorenje ako je mjerenje aktivno
+  if (tab !== 'new' && isMeasurementActive()) {
+    if (!confirm('Mjerenje je u tijeku!\n\nAko nastaviš, izgubiti ćeš nespremnene podatke.\n\nŽeliš li napustiti mjerenje?')) {
+      return;
+    }
+    state.currentMeasurement = {
+      measurer: state.currentMeasurer, device: state.currentDevice,
+      landfill: null, date: new Date().toISOString().split('T')[0],
+      airTemp: '', airPressure: '', windDirection: '', windSpeed: '', startTime: '', vents: []
+    };
+    state.selectedLandfill = null;
+    localStorage.removeItem('tempMeasurement');
+  }
+  if (tab === 'new') {
+    if (isMeasurementActive()) {
+      showNewStep('map');
+      return;
+    }
+    startNewMeasurement();
+    return;
+  }
   showAppScreen('view-' + tab);
   if (tab === 'measurements') openMeasurementsTab();
   if (tab === 'home') { updateGreeting(); }
   if (tab === 'navigation') { initNavTab(); }
+}
+
+function updateMoreBackBanner() {
+  const banner = document.getElementById('more-back-to-measurement');
+  if (!banner) return;
+  if (isMeasurementActive()) {
+    banner.style.display = 'flex';
+    const lbl = document.getElementById('more-back-landfill');
+    if (lbl) lbl.textContent = state.currentMeasurement.landfill.name || '';
+  } else {
+    banner.style.display = 'none';
+  }
 }
 function startNewMeasurement(){
   if (state.currentMeasurer) document.getElementById('measurer-select').value = state.currentMeasurer;
@@ -2323,6 +2378,7 @@ function initApp() {
     const p = document.getElementById('password-input').value;
     const c = atob('MzczNw==');
     if (p !== c) { alert("Neispravan pristupni kod!"); return; }
+    sessionStorage.setItem('mop_auth', '1');
     document.getElementById('password-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     showAppScreen('view-home');
@@ -2451,6 +2507,16 @@ document.addEventListener('DOMContentLoaded', async function() {
   customLandfillsFromFB.forEach(l => LANDFILLS.push(l));
   refreshVentsAndCoords();
   initApp();
+  // Ako je već autentificiran u ovoj sesiji, preskoči login
+  if (sessionStorage.getItem('mop_auth') === '1') {
+    document.getElementById('password-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    showAppScreen('view-home');
+    loadNotifications();
+    startLoginClock();
+    updateGreeting();
+    checkRemindersOnLoad();
+  }
 });
 
 // === FORECAST (postojeća logika) ===
